@@ -3,18 +3,18 @@
  * Plugin Name: Pixel Gallery
  * Plugin URI: https://pixelgallery.pro/
  * Description: The all-new <a href="https://pixelgallery.pro/">Pixel Gallery</a> brings incredibly advanced, and super-flexible widgets, and A to Z essential addons to the Elementor page builder for WordPress. Explore expertly-coded widgets with first-class support by experts.
- * Version: 1.5.4
+ * Version: 1.5.5
  * Author: BdThemes
  * Author URI: https://bdthemes.com/
  * Text Domain: pixel-gallery
  * Domain Path: /languages
  * License: GPL3
  * Elementor requires at least: 3.22
- * Elementor tested up to: 3.24.3
+ * Elementor tested up to: 3.25.9
  */
 
 // Some pre defined value for easy use
-define( 'BDTPG_VER', '1.5.4' );
+define( 'BDTPG_VER', '1.5.5' );
 define( 'BDTPG_TPL_DB_VER', '1.0.0' );
 define( 'BDTPG__FILE__', __FILE__ );
 if ( ! defined( 'BDTPG_TITLE' ) ) {
@@ -69,11 +69,23 @@ if ( function_exists( 'pg_license_validation' ) && true !== pg_license_validatio
 require_once ( dirname( __FILE__ ) . '/includes/utils.php' );
 
 /**
+ * Loads translations
+ *
+ * @return void
+ */
+
+if ( ! function_exists( 'pixel_gallery_load_textdomain' ) ) {
+	function pixel_gallery_load_textdomain() {
+		load_plugin_textdomain( 'pixel-gallery', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+	}
+	add_action( 'init', 'pixel_gallery_load_textdomain' );
+}
+
+/**
  * Plugin load here correctly
  * Also loaded the language file from here
  */
 function pixel_gallery_load_plugin() {
-	load_plugin_textdomain( 'pixel-gallery', false, BDTPG_PNAME . '/languages' );
 
 	if ( ! did_action( 'elementor/loaded' ) ) {
 		add_action( 'admin_notices', 'pixel_gallery_fail_load' );
@@ -184,9 +196,6 @@ if ( ! function_exists( 'dci_plugin_pixel_gallery' ) ) {
 			'is_premium'          => true,
 			'popup_notice'        => false,
 			'deactivate_feedback' => true,
-			'delay_time'          => [ 
-				'time' => 3 * DAY_IN_SECONDS,
-			],
 			'plugin_msg'          => '<p>Be Top-contributor by sharing non-sensitive plugin data and create an impact to the global WordPress community today! You can receive valuable emails periodically.</p>',
 		) );
 
