@@ -58,6 +58,15 @@ class Ranch extends Module_Base
 		];
 	}
 
+	public function get_script_depends()
+	{
+		if ( true === _is_pg_pro_activated() ) {
+			return ['justified-gallery'];
+		} else {
+			return [];
+		}
+	}
+
 	
 	public function get_custom_help_url() {
 		return 'https://youtu.be/IBjHSszBflk';
@@ -83,6 +92,12 @@ class Ranch extends Module_Base
 		//Global
 		$this->register_grid_controls('ranch');
 		$this->register_global_height_controls('ranch');
+		
+		/**
+		 * Justified Gallery Controls
+		 */
+		$this->register_justified_gallery_controls();
+		
 		$this->register_title_tag_controls();
 		$this->register_show_meta_controls();
 		$this->add_control(
@@ -522,6 +537,7 @@ class Ranch extends Module_Base
 				'type'      => Controls_Manager::COLOR,
 				'selectors' => [
 					'{{WRAPPER}} .pg-social-icon span' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .pg-social-icon span svg' => 'fill: {{VALUE}};',
 				],
 			]
 		);
@@ -646,6 +662,7 @@ class Ranch extends Module_Base
 				'type'      => Controls_Manager::COLOR,
 				'selectors' => [
 					'{{WRAPPER}} .pg-social-icon a:hover span' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .pg-social-icon a:hover span svg' => 'fill: {{VALUE}};',
 				],
 			]
 		);
@@ -690,7 +707,7 @@ class Ranch extends Module_Base
 			return;
 		}
 
-?>
+		?>
 		<?php if (!empty($item['meta'])) : ?>
 			<div class="pg-ranch-meta">
 				<span><?php echo wp_kses_post($item['meta']); ?></span>
@@ -768,6 +785,11 @@ class Ranch extends Module_Base
 		$settings   = $this->get_settings_for_display();
 		$this->add_render_attribute('grid', 'class', 'pg-ranch-grid pg-grid');
 
+		/**
+		 * Render Justified Gallery Attributes
+		 */
+		$this->render_justified_gallery_attributes('grid');
+		
 		if (isset($settings['pg_in_animation_show']) && ($settings['pg_in_animation_show'] == 'yes')) {
 			$this->add_render_attribute( 'grid', 'class', 'pg-in-animation' );
 			if (isset($settings['pg_in_animation_delay']['size'])) {

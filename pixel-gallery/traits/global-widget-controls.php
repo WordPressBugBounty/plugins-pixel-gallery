@@ -1683,9 +1683,69 @@ trait Global_Widget_Controls
 		);
 
 	}
-	  /**
-	   * end Media, Video Part
-	   */
+	/**
+	 * end Media, Video Part
+	 */
+
+	/**
+	 * Register Justified Gallery Controls
+	 * @param string $prefix
+	 * @since 1.0.0
+	 */
+	protected function register_justified_gallery_controls() {
+		$this->add_control(
+			'justified_gallery',
+			[
+				'label'       => esc_html__('Justified Gallery', 'pixel-gallery') . BDTPG_NC . BDTPG_PC,
+				'type'        => Controls_Manager::SWITCHER,
+				'description' => esc_html__('Note: If you enable Justified Gallery then Grid, Masonry, and Column Span/Row Span settings will not work.', 'pixel-gallery'),
+				'separator'   => 'before',
+				'classes'   => BDTPG_IS_PC
+			]
+		);
+		
+		$this->add_control(
+			'gallery_item_height',
+			[
+				'label'   => esc_html__('Image Height', 'pixel-gallery'),
+				'description'   => esc_html__('Some times image height not exactly same because of auto row adjustment.', 'pixel-gallery'),
+				'type'    => Controls_Manager::SLIDER,
+				'default' => [
+					'size' => 260,
+				],
+				'range' => [
+					'px' => [
+						'min'  => 50,
+						'max'  => 500,
+						'step' => 5,
+					],
+				],
+				'condition' => [
+					'justified_gallery' => 'yes'
+				]
+			]
+		);
+
+		$this->add_responsive_control(
+			'row_column_gap',
+			[
+				'label'   => esc_html__('Item Gap', 'pixel-gallery'),
+				'type'    => Controls_Manager::SLIDER,
+				'default' => [
+					'size' => 10,
+				],
+				'range' => [
+					'px' => [
+						'min'  => 0,
+						'max'  => 100,
+					],
+				],
+				'condition' => [
+					'justified_gallery' => 'yes'
+				]
+			]
+		);
+	}
 
 
 
@@ -2281,6 +2341,25 @@ trait Global_Widget_Controls
 			$this->add_render_attribute($attr, [
 				'class' => 'elementor-clickable',
 			]);
+		}
+	}
+
+	/**
+	 * Render Justified Gallery Attributes
+	 * @param string $element
+	 * @since 1.0.0
+	 */
+	protected function render_justified_gallery_attributes($element = 'grid') {
+		$settings = $this->get_settings_for_display();
+		
+		if (isset($settings['justified_gallery']) && $settings['justified_gallery'] === 'yes') {
+			$this->add_render_attribute($element, 'class', 'jgallery');
+			if ($settings['gallery_item_height']['size']) {
+				$this->add_render_attribute($element, 'data-jgallery-jfheight', esc_attr($settings['gallery_item_height']['size']));
+			}
+			if ($settings['row_column_gap']['size']) {
+				$this->add_render_attribute($element, 'data-jgallery-itemgap', esc_attr($settings['row_column_gap']['size']));
+			}
 		}
 	}
 
