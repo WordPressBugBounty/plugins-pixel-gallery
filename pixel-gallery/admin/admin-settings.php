@@ -762,7 +762,7 @@ class PixelGallery_Admin_Settings {
                     <span class="label1"><?php esc_html_e('Memory Limit:', 'pixel-gallery'); ?> </span>
 
                     <?php
-                    if ($memory_limit < '256') {
+                    if (intval($memory_limit) < '256') {
                         printf('<span class="invalid">%1$s</span>', wp_kses($no_icon, $icon_validation));
                         printf('<span class="label2">Currently: %1$s (Min: 256M Recommended)</span>', esc_html($memory_limit));
                     } else {
@@ -778,7 +778,7 @@ class PixelGallery_Admin_Settings {
                     <span class="label1"><?php esc_html_e('Max Post Limit:', 'pixel-gallery'); ?> </span>
 
                     <?php
-                    if ($post_limit < '32') {
+                    if (intval($post_limit) < '32') {
                         printf('<span class="invalid">%1$s</span>',  wp_kses($no_icon, $icon_validation));
                         printf('<span class="label2">Currently: %1$s (Min: 32M Recommended)</span>', esc_html($post_limit));
                     } else {
@@ -1010,9 +1010,15 @@ class PixelGallery_Admin_Settings {
                     }
                 }
 
-                jQuery(window).on('load', function() {
+                function onWindowLoad() {
                     hashHandler();
-                });
+                }
+                
+ 				if (document.readyState === 'complete') {
+ 					onWindowLoad();
+ 				} else {
+ 					jQuery(window).on('load', onWindowLoad);
+ 				}
 
                 window.addEventListener("hashchange", hashHandler, true);
 
@@ -1021,7 +1027,7 @@ class PixelGallery_Admin_Settings {
                     jQuery(this).parent().addClass('current');
                 });
 
-                jQuery('#pixel_gallery_active_modules_page a.pg-active-all-widget').click(function(e) {
+                jQuery('#pixel_gallery_active_modules_page a.pg-active-all-widget').on('click', function(e) {
                     e.preventDefault();
 
                     jQuery('#pixel_gallery_active_modules_page .pg-option-item:not(.pg-pro-inactive) .checkbox:visible').each(function() {
@@ -1032,7 +1038,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-deactive-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('#pixel_gallery_active_modules_page a.pg-deactive-all-widget').click(function(e) {
+                jQuery('#pixel_gallery_active_modules_page a.pg-deactive-all-widget').on('click', function(e) {
                     e.preventDefault();
 
                     jQuery('#pixel_gallery_active_modules_page .pg-option-item:not(.pg-pro-inactive) .checkbox:visible').each(function() {
@@ -1043,7 +1049,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-active-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('#pixel_gallery_third_party_widget_page a.pg-active-all-widget').click(function() {
+                jQuery('#pixel_gallery_third_party_widget_page a.pg-active-all-widget').on('click', function() {
 
                     jQuery('#pixel_gallery_third_party_widget_page .checkbox:visible').each(function() {
                         jQuery(this).attr('checked', 'checked').prop("checked", true);
@@ -1053,7 +1059,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-deactive-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('#pixel_gallery_third_party_widget_page a.pg-deactive-all-widget').click(function() {
+                jQuery('#pixel_gallery_third_party_widget_page a.pg-deactive-all-widget').on('click', function() {
 
                     jQuery('#pixel_gallery_third_party_widget_page .checkbox:visible').each(function() {
                         jQuery(this).removeAttr('checked');
@@ -1063,7 +1069,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-active-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('#pixel_gallery_elementor_extend_page a.pg-active-all-widget').click(function() {
+                jQuery('#pixel_gallery_elementor_extend_page a.pg-active-all-widget').on('click', function() {
 
                     jQuery('#pixel_gallery_elementor_extend_page .checkbox:visible').each(function() {
                         jQuery(this).attr('checked', 'checked').prop("checked", true);
@@ -1073,7 +1079,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-deactive-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('#pixel_gallery_elementor_extend_page a.pg-deactive-all-widget').click(function() {
+                jQuery('#pixel_gallery_elementor_extend_page a.pg-deactive-all-widget').on('click', function() {
 
                     jQuery('#pixel_gallery_elementor_extend_page .checkbox:visible').each(function() {
                         jQuery(this).removeAttr('checked');
@@ -1083,7 +1089,7 @@ class PixelGallery_Admin_Settings {
                     jQuery('a.pg-active-all-widget').removeClass('bdt-active');
                 });
 
-                jQuery('form.settings-save').submit(function(event) {
+                jQuery('form.settings-save').on('submit', function(event) {
                     event.preventDefault();
 
                     bdtUIkit.notification({
