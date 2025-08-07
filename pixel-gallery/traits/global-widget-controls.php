@@ -930,9 +930,10 @@ trait Global_Widget_Controls
 				'label'          => _x('Default', 'Mask Image', 'pixel-gallery'),
 				'label_block'    => true,
 				'show_label'     => false,
-				'type'           => Controls_Manager::SELECT,
+				'type'           => Controls_Manager::VISUAL_CHOICE,
+				'columns'        => 4,
 				'default'        => 'shape-1',
-				'options'        => pixel_gallery_mask_shapes(),
+				'options'        => pixel_gallery_mask_shapes_options(),
 				'selectors'      => [
 					'{{WRAPPER}} .pg-' . $name . '-image-wrap img' => '-webkit-mask-image: url('.BDTPG_ASSETS_URL . 'images/mask/'.'{{VALUE}}.svg); mask-image: url('.BDTPG_ASSETS_URL . 'images/mask/'.'{{VALUE}}.svg);',
 					'{{WRAPPER}} .pg-' . $name . '-image-wrap:before' => 'background-image: url('.BDTPG_ASSETS_URL . 'images/mask/color-'.'{{VALUE}}.svg);',
@@ -1942,7 +1943,7 @@ trait Global_Widget_Controls
 		if (!$thumb_url) {
 			// Sanitize the image URL to prevent XSS
 			$image_url = isset($item['image']['url']) ? esc_url($item['image']['url']) : '';
-			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', $image_url, esc_html($item['title']), esc_attr($name));
+			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', esc_url( $image_url ), esc_html($item['title']), esc_attr($name));
 		} else {
 			print(wp_get_attachment_image(
 				$item['image']['id'],
@@ -1964,7 +1965,7 @@ trait Global_Widget_Controls
         $image_src = wp_get_attachment_image_src(get_post_thumbnail_id($post_id), $size);
 
 		if (!$image_src) {
-			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', $placeholder_image_src, esc_html(get_the_title()), esc_attr($name));
+			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', esc_url( $placeholder_image_src ), esc_html(get_the_title()), esc_attr($name));
 		} else {
 			print(wp_get_attachment_image(
 				get_post_thumbnail_id(),
@@ -2035,7 +2036,7 @@ trait Global_Widget_Controls
 		if (!$thumb_url) {
 			// Sanitize the poster URL to prevent XSS
 			$poster_url = isset($item['poster']['url']) ? esc_url($item['poster']['url']) : '';
-			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', $poster_url, esc_html($item['title']), esc_attr($name));
+			printf('<img src="%1$s" alt="%2$s" class="pg-%3$s-img">', esc_url( $poster_url ), esc_html($item['title']), esc_attr($name));
 		} else {
 			print(wp_get_attachment_image(
 				$item['poster']['id'],
@@ -2058,7 +2059,7 @@ trait Global_Widget_Controls
 		}
 
 		if (!empty($item['title'])) {
-			printf('<%1$s class="pg-%3$s-title">%2$s</%1$s>', Utils::get_valid_html_tag($settings['title_tag']), wp_kses_post($item['title']), esc_attr($name));
+			printf('<%1$s class="pg-%3$s-title">%2$s</%1$s>', esc_attr( Utils::get_valid_html_tag($settings['title_tag']) ), wp_kses_post($item['title']), esc_attr($name));
 		}
 	}
 
@@ -2069,7 +2070,7 @@ trait Global_Widget_Controls
 			return;
 		}
 
-        printf('<%1$s class="pg-%3$s-title">%2$s</%1$s>', Utils::get_valid_html_tag($settings['title_tag']), get_the_title(), esc_attr($name));
+        printf('<%1$s class="pg-%3$s-title">%2$s</%1$s>', esc_attr( Utils::get_valid_html_tag($settings['title_tag']) ), esc_html( get_the_title() ), esc_attr($name));
 	}
 
 	protected function render_meta($item, $name) {
