@@ -80,6 +80,34 @@ class Alien extends Module_Base {
 		$this->register_lightbox_controls();
 		$this->register_link_target_controls();
 
+		$this->add_responsive_control(
+			'button_alignment',
+			[
+				'label'   => esc_html__('Button Alignment', 'pixel-gallery') . BDTPG_NC,
+				'type'    => Controls_Manager::CHOOSE,
+				'options' => [
+					'left' => [
+						'title' => esc_html__('Left', 'pixel-gallery'),
+						'icon'  => 'eicon-text-align-left',
+					],
+					'center' => [
+						'title' => esc_html__('Center', 'pixel-gallery'),
+						'icon'  => 'eicon-text-align-center',
+					],
+					'right' => [
+						'title' => esc_html__('Right', 'pixel-gallery'),
+						'icon'  => 'eicon-text-align-right',
+					],
+				],
+				'devices'      => ['desktop', 'tablet'],
+				'prefix_class' => 'button-align-%s',
+				'condition'    => [
+					'link_to!' 	  => 'none',
+					'link_target' => 'only_button',
+				],
+			]
+		);
+
 		$this->end_controls_section();
 
 		$this->start_controls_section(
@@ -351,6 +379,7 @@ class Alien extends Module_Base {
 		$link = $this->get_link_url($item);
 		if ($link) {
 			$this->add_link_attributes('link' . $index, $link, true);
+			$this->add_render_attribute('link' . $index, 'aria-label', esc_attr( $item['readmore_text'] . ' Button' ));
 
 			/**
 			 * If the Video Added then No need Image Lightbox

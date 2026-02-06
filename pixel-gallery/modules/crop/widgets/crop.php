@@ -29,6 +29,8 @@ class Crop extends Module_Base {
 	use Global_Widget_Controls;
 	use Group_Control_Query;
 
+	private $_query;
+
 	public function get_query() {
 		return $this->_query;
 	}
@@ -64,9 +66,6 @@ class Crop extends Module_Base {
 	public function has_widget_inner_wrapper(): bool {
         return ! \Elementor\Plugin::$instance->experiments->is_feature_active( 'e_optimized_markup' );
     }
-	protected function is_dynamic_content(): bool {
-		return false;
-	}
 
 	protected function register_controls() {
 
@@ -108,7 +107,7 @@ class Crop extends Module_Base {
 		$this->start_controls_section(
 			'section_post_query_builder',
 			[
-				'label' => __('Query', 'pixel-gallery') . BDTPG_NC,
+				'label' => __('Query', 'pixel-gallery'),
 				'tab' => Controls_Manager::TAB_CONTENT,
 				'condition' => [
 					'source' => 'dynamic',
@@ -464,6 +463,9 @@ class Crop extends Module_Base {
 
 		//Clip Path Controls
 		$this->register_clip_path_controls('crop');
+
+		// Pagination Style Control
+		$this->register_pagination_style_controls();
 	}
 
 	/**
@@ -642,9 +644,14 @@ class Crop extends Module_Base {
 			<?php else : ?>
 				<?php $this->render_items(); ?>
 			<?php endif; ?>
-
-
+			
 		</div>
+		
+		<?php if ($settings['show_pagination'] && 'dynamic' === $settings['source']) : ?>
+		<div class="pixel-gallery-pagination">
+			<?php pixel_gallery_post_pagination($this->get_query(), $this->get_id()); ?>
+		</div>
+		<?php endif; ?>
 <?php
 	}
 }

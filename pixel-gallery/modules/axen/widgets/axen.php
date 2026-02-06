@@ -74,9 +74,6 @@ class Axen extends Module_Base {
 	public function has_widget_inner_wrapper(): bool {
         return ! \Elementor\Plugin::$instance->experiments->is_feature_active( 'e_optimized_markup' );
     }
-	protected function is_dynamic_content(): bool {
-		return false;
-	}
 
 	protected function register_controls() {
 
@@ -122,7 +119,7 @@ class Axen extends Module_Base {
 		$this->start_controls_section(
 			'section_post_query_builder',
 			[
-				'label' => __('Query', 'pixel-gallery') . BDTPG_NC,
+				'label' => __('Query', 'pixel-gallery'),
 				'tab' => Controls_Manager::TAB_CONTENT,
 				'condition' => [
 					'source' => 'dynamic',
@@ -217,18 +214,18 @@ class Axen extends Module_Base {
 				'tablet_default' => '6',
 				'mobile_default' => '12',
 				'options' => [
-					'1' => '1',
-					'2' => '2',
-					'3' => '3',
-					'4' => '4',
-					'5' => '5',
-					'6' => '6',
-					'7' => '7',
-					'8' => '8',
-					'9' => '9',
-					'10' => '10',
-					'11' => '11',
-					'12' => '12',
+					'1' => esc_html__('1', 'pixel-gallery'),
+					'2' => esc_html__('2', 'pixel-gallery'),
+					'3' => esc_html__('3', 'pixel-gallery'),
+					'4' => esc_html__('4', 'pixel-gallery'),
+					'5' => esc_html__('5', 'pixel-gallery'),
+					'6' => esc_html__('6', 'pixel-gallery'),
+					'7' => esc_html__('7', 'pixel-gallery'),
+					'8' => esc_html__('8', 'pixel-gallery'),
+					'9' => esc_html__('9', 'pixel-gallery'),
+					'10' => esc_html__('10', 'pixel-gallery'),
+					'11' => esc_html__('11', 'pixel-gallery'),
+					'12' => esc_html__('12', 'pixel-gallery'),
 				],
 				'selectors' => [
 					'{{WRAPPER}} .pg-axen-grid {{CURRENT_ITEM}}' => 'grid-column: span {{VALUE}} / auto;',
@@ -245,18 +242,18 @@ class Axen extends Module_Base {
 				'tablet_default' => '1',
 				'mobile_default' => '1',
 				'options' => [
-					'1' => '1',
-					'2' => '2',
-					'3' => '3',
-					'4' => '4',
-					'5' => '5',
-					'6' => '6',
-					'7' => '7',
-					'8' => '8',
-					'9' => '9',
-					'10' => '10',
-					'11' => '11',
-					'12' => '12',
+					'1' => esc_html__('1', 'pixel-gallery'),
+					'2' => esc_html__('2', 'pixel-gallery'),
+					'3' => esc_html__('3', 'pixel-gallery'),
+					'4' => esc_html__('4', 'pixel-gallery'),
+					'5' => esc_html__('5', 'pixel-gallery'),
+					'6' => esc_html__('6', 'pixel-gallery'),
+					'7' => esc_html__('7', 'pixel-gallery'),
+					'8' => esc_html__('8', 'pixel-gallery'),
+					'9' => esc_html__('9', 'pixel-gallery'),
+					'10' => esc_html__('10', 'pixel-gallery'),
+					'11' => esc_html__('11', 'pixel-gallery'),
+					'12' => esc_html__('12', 'pixel-gallery'),
 				],
 				'selectors' => [
 					'{{WRAPPER}} .pg-axen-grid {{CURRENT_ITEM}}' => 'grid-row: span {{VALUE}} / auto;',
@@ -469,7 +466,7 @@ class Axen extends Module_Base {
 		$this->add_control(
 			'glassmorphism_effect',
 			[
-				'label' => esc_html__('Glassmorphism', 'pixel-gallery') . BDTPG_NC,
+				'label' => esc_html__('Glassmorphism', 'pixel-gallery'),
 				'type'  => Controls_Manager::SWITCHER,
 				'description' => sprintf(esc_html__('This feature will not work in the Firefox browser untill you enable browser compatibility so please %1s look here %2s', 'pixel-gallery'), '<a href="https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter#Browser_compatibility" target="_blank">', '</a>'),
 
@@ -584,6 +581,9 @@ class Axen extends Module_Base {
 
 		//Clip Path Controls
 		$this->register_clip_path_controls('axen');
+
+		// Pagination Style Control
+		$this->register_pagination_style_controls();
 	}
 
 	/**
@@ -744,9 +744,14 @@ class Axen extends Module_Base {
 			<?php else : ?>
 				<?php $this->render_items(); ?>
 			<?php endif; ?>
-
-
+			
 		</div>
+
+		<?php if ($settings['show_pagination'] && 'dynamic' === $settings['source']) : ?>
+		<div class="pixel-gallery-pagination">
+			<?php pixel_gallery_post_pagination($this->get_query(), $this->get_id()); ?>
+		</div>
+		<?php endif; ?>
 <?php
 	}
 }

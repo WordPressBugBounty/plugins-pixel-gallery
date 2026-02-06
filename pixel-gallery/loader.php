@@ -2,6 +2,8 @@
 
 namespace PixelGallery;
 
+use Pixel_Gallery\Includes\Pixel_Gallery_WPML;
+
 use Elementor\Plugin;
 
 if (!defined('ABSPATH')) {
@@ -9,7 +11,7 @@ if (!defined('ABSPATH')) {
 } // Exit if accessed directly
 
 /**
- * Main class for element pack
+ * Main class for pixel gallery
  */
 class Pixel_Gallery_Loader {
 
@@ -122,6 +124,10 @@ class Pixel_Gallery_Loader {
         // require_once BDTPG_PATH . 'traits/global-mask-controls.php';
 
 
+        // wpml compatibility class for wpml support
+		require_once BDTPG_PATH . 'includes/class-elements-wpml-compatibility.php';
+
+
         // All modules loading from here
         require_once BDTPG_INC_PATH . 'modules-manager.php';
 
@@ -180,8 +186,8 @@ class Pixel_Gallery_Loader {
 
         $direction_suffix = is_rtl() ? '.rtl' : '';
 
-        wp_enqueue_style('pg-helper', BDTPG_ASSETS_URL . 'css/pg-helper' . $direction_suffix . '.css', ['e-swiper'], BDTPG_VER);
-        wp_enqueue_style('pg-font', BDTPG_ASSETS_URL . 'css/pg-font' . $direction_suffix . '.css', [], BDTPG_VER);
+        wp_enqueue_style('pg-helper', BDTPG_ASSETS_URL . 'css/pg-helper.css', ['e-swiper'], BDTPG_VER);
+        wp_enqueue_style('pg-font', BDTPG_ASSETS_URL . 'css/pg-font.css', [], BDTPG_VER);
     }
 
     public function enqueue_editor_scripts() {
@@ -220,7 +226,7 @@ class Pixel_Gallery_Loader {
     public function enqueue_editor_styles() {
         $direction_suffix = is_rtl() ? '.rtl' : '';
 
-        wp_enqueue_style('pg-editor', BDTPG_ASSETS_URL . 'css/pg-editor' . $direction_suffix . '.css', '', BDTPG_VER);
+        wp_enqueue_style('pg-editor', BDTPG_ASSETS_URL . 'css/pg-editor.css', '', BDTPG_VER);
     }
 
 
@@ -234,7 +240,7 @@ class Pixel_Gallery_Loader {
             $upload_url = $this->get_upload_url() . 'css/pg-styles.css';
             wp_register_style('pg-styles', $upload_url, [], $version);
         } else {
-            wp_register_style('pg-styles', BDTPG_URL . 'assets/css/pg-styles' . $direction_suffix . '.css', [], BDTPG_VER);
+            wp_register_style('pg-styles', BDTPG_URL . 'assets/css/pg-styles.css', [], BDTPG_VER);
         }
 
         if (pixel_gallery_is_asset_optimization_enabled()) {
@@ -328,6 +334,10 @@ class Pixel_Gallery_Loader {
         die();
     }
 
+    // Load WPML compatibility instance
+    public function wpml_compatiblity() {
+        return Pixel_Gallery_WPML::get_instance();
+    }
 
     /**
      * initialize the category
@@ -400,6 +410,8 @@ class Pixel_Gallery_Loader {
 
         // Finally hooked up all things here
         $this->setup_hooks();
+
+        $this->wpml_compatiblity()->init();
 
         add_action('init', [$this, 'init']);
     }

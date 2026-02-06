@@ -3,20 +3,32 @@
  * Plugin Name: Pixel Gallery
  * Plugin URI: https://pixelgallery.pro/
  * Description: The all-new <a href="https://pixelgallery.pro/">Pixel Gallery</a> brings incredibly advanced, and super-flexible widgets, and A to Z essential addons to the Elementor page builder for WordPress. Explore expertly-coded widgets with first-class support by experts.
- * Version: 1.6.12
+ * Version: 2.1.0
  * Author: BdThemes
  * Author URI: https://bdthemes.com/
  * Text Domain: pixel-gallery
  * Domain Path: /languages
  * License: GPL3
- * Elementor requires at least: 3.22
- * Elementor tested up to: 3.32.2
+ * Elementor requires at least: 3.28
+ * Elementor tested up to: 3.34.2
  */
 
 // Some pre defined value for easy use
-define( 'BDTPG_VER', '1.6.12' );
+define( 'BDTPG_VER', '2.1.0' );
 define( 'BDTPG_TPL_DB_VER', '1.0.0' );
 define( 'BDTPG__FILE__', __FILE__ );
+
+// Load white label configuration if it exists (before defining BDTPG_TITLE)
+if ( ! defined( 'BDTPG_WL' ) ) {
+    if ( get_option( 'pg_white_label_enabled' ) ) {
+        define( 'BDTPG_WL', true );
+		$white_label_config = dirname( __FILE__ ) . '/admin/white-label/white-label-config.php';
+		if ( file_exists( $white_label_config ) ) {
+			require_once( $white_label_config );
+		}
+	}
+}
+
 if ( ! defined( 'BDTPG_TITLE' ) ) {
 	define( 'BDTPG_TITLE', 'Pixel Gallery' );
 }
@@ -93,14 +105,21 @@ function pixel_gallery_load_plugin() {
 		return;
 	}
 
+	// Setup wizard init file
+	require_once( dirname( __FILE__ ) . '/includes/setup-wizard/init.php' );
+
 	// Widgets filters here
 	require_once ( BDTPG_INC_PATH . 'pixel-gallery-filters.php' );
 
-	// Element pack widget and assets loader
+	// Pixel gallery widget and assets loader
 	require_once ( BDTPG_PATH . 'loader.php' );
 
-	// Notice class
-	require_once ( BDTPG_ADMIN_PATH . 'admin-notice.php' );
+	// Initialize custom CSS/JS injection on frontend
+	add_action( 'wp_head', 'pg_inject_header_custom_code', 999 );
+	add_action( 'wp_footer', 'pg_inject_footer_custom_code', 999 );
+
+	// Biggopti class
+	require_once ( BDTPG_ADMIN_PATH . 'admin-biggopti.php' );
 }
 
 add_action( 'plugins_loaded', 'pixel_gallery_load_plugin', 9 );
@@ -151,7 +170,7 @@ if ( ! function_exists( '_is_elementor_installed' ) ) {
 }
 
 /**
- * Added notice after install or upgrade to v6
+ * Added biggopti after install or upgrade to v6
  *
  * @param string $plugin
  * @return void

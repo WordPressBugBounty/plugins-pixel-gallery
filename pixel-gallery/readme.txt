@@ -1,15 +1,15 @@
 === Pixel Gallery Addons for Elementor - Easy Grid, Creative Gallery, Drag and Drop Grid, Custom Grid Layout, Portfolio Gallery ===
-Contributors: bdthemes, selimmw, mohammaadfarid, abutalib, muhammadasik, tauhidalam, maudud
+Contributors: bdthemes, selimmw, mohammaadfarid, abutalib, muhammadasik, tauhidalam, maudud, shmusuf, syedfarhanreza, arafatakashakku, shaikatazim,  shamim496
 Donate link: http://bdthemes.com/
 Tags:  gallery, responsive gallery, image gallery, video gallery, gallery plugin
 Requires at least: 5.0.0
-Tested up to: 6.8.2
+Tested up to: 6.9
 Requires PHP: 7.4.0
-Stable tag: 1.6.12
+Stable tag: 2.1.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
-Elementor requires at least: 3.22
-Elementor tested up to: 3.32.2
+Elementor requires at least: 3.28
+Elementor tested up to: 3.34.2
 
 Best Addon for Elementor WordPress Plugin with 60+ Most Popular Elements that need your everyday website page building.
 
@@ -19,6 +19,7 @@ Best Addon for Elementor WordPress Plugin with 60+ Most Popular Elements that ne
 **[Pixel Gallery](https://pixelgallery.pro/)** is a modern image gallery plugin for Elementor that makes your website more exciting with stunning layouts, smooth animations and unique effects.
 
 Say goodbye to complicated, slow gallery plugins. Pixel Gallery offers a fast, intuitive and customizable solution to create beautiful, responsive galleries with ease. Perfect for improving your site's visual appeal without the complexity. 
+
 
 == Key Features 🎇 ==
 
@@ -90,7 +91,7 @@ You can also use our plugin to display static WooCommerce product galleries at e
 
 
 ###USEFUL LINKS 👇###
-**[Live Demo](https://pixelgallery.pro/demo/)** | **[Documentation](https://bdthemes.com/knowledge-base/)** | **[Video Tutorial](https://www.youtube.com/watch?v=a2b1YeIzu7c&list=PLP0S85GEw7DPv5T-Ara11Zvplmk4ty0jy&index=1)** | **[Need Support?](https://bdthemes.com/support/)**
+**[Live Demo](https://pixelgallery.pro/demo/)** | **[Documentation](https://bdthemes.com/all-knowledge-base-of-pixel-gallery/)** | **[Video Tutorial](https://www.youtube.com/playlist?list=PLP0S85GEw7DPv5T-Ara11Zvplmk4ty0jy)** | **[Need Support?](https://bdthemes.com/support/)**
 
 
 == Free Widgets for Lifetime 🔥 ==
@@ -227,6 +228,82 @@ https://youtu.be/f70l2qE7W7o
 
 
 == Changelog ==
+
+= 2.1.0 [22nd January 2026] =
+
+* Added: WPML multi-language support added in pro widgets
+* Added: Compatible with modern css & removed RTL css files
+* Fixed: Pagination issues in the axen, crop and ocean widgets
+* Fixed: Deprecated issue in the ocean widget
+* Fixed: Design issues in the Custom Code and Reset Code buttons
+
+= 2.0.1 [12th January 2026] =
+
+* Updated: System improved
+
+= 2.0.0 [6th January 2026] =
+
+* Added: Draggable widget added
+* Added: WPML multi-language support added
+* Added: White Label feature added
+* Added: Custom CSS & JS feature added
+* Added: Setup wizard/onboarding feature added
+* Added: Rollback version feature added in admin dashboard
+* Updated: Admin dashboard updated
+
+= 1.7.11 [4th January 2026] =
+
+* Fixed: Mask color shape not found issue fixed
+
+= 1.7.10 [18th December 2025] =
+
+* Added: Glassmorphism control for styling the date in the panda widget
+* Added: Button alignment control added in the alien widget
+
+= 1.7.9 [11th December 2025] =
+
+* Fixed: Separator display issue fixed in zilax widget
+
+= 1.7.8 [2nd December 2025] =
+
+* Added: Added aria-label attribute to links for better accessibility
+* Updated: Made compatible with WordPress version 6.9
+
+= 1.7.7 [27th November 2025] =
+
+* Added: New style control for creating multiple style options in the trance widget
+
+= 1.7.6 [20th November 2025] =
+
+* Fixed: Notice duplicate issue fixed
+
+= 1.7.5 [19th November 2025] =
+
+* Added: New style control for creating multiple style options in the Verse widget
+* Added: Added aria-label attribute to links for better accessibility
+
+= 1.7.4 [13th November 2025] =
+
+* Updated: Notice design improved
+
+= 1.7.3 [12th November 2025] =
+
+* Updated: System Improved
+
+= 1.7.2 [11th November 2025] =
+
+* Fixed: API Banner duplicate issue fixed
+
+= 1.7.1 [10th November 2025] =
+
+* Updated: System Improved
+
+= 1.7.0 [4th November 2025] =
+
+* Added: dynamic tag support added
+* Fixed: Deprication error fixed in crop widget
+* Fixed: Read more button click issue fixed in orbit widget
+* Fixed: Image hover border color issue fixed in fabric widget
 
 = 1.6.12 [28th September 2025] =
 
@@ -442,3 +519,7 @@ Note: we don’t provide plugin support for Adult sites.
 ### Can I use Pixel Gallery on client sites?
 
 - Yes, definitely. You can use Pixel Gallery on any website, self or client, within the allowed number of licenses provided by the package you purchase. There are no bindings to the usage.
+
+###  How can I report security bugs? 
+
+-  You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team helps validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/36087a5d-99c5-467f-b56f-6732d051a774)

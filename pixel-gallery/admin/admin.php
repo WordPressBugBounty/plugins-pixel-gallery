@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
 
 require_once BDTPG_ADMIN_PATH . 'class-settings-api.php';
 // require_once BDTPG_ADMIN_PATH . 'admin-feeds.php';
-// element pack admin settings here
+// pixel gallery admin settings here
 require_once BDTPG_ADMIN_PATH . 'admin-settings.php';
 
 /**
@@ -35,14 +35,14 @@ class Admin {
 
         // register_activation_hook(BDTPG__FILE__, 'install_and_activate');
 
-        add_action('admin_init', [$this, 'admin_notice_styles']);
+        add_action('admin_init', [$this, 'admin_biggopti_styles']);
 
         add_filter('plugin_action_links_' . BDTPG_PBNAME, [$this, 'plugin_action_links']);
         
     }
 
-    public function admin_notice_styles(){
-		wp_enqueue_style('pg-admin-notice', BDTPG_ADMIN_URL . 'assets/css/pg-admin-notice.css', [], BDTPG_VER);
+    public function admin_biggopti_styles(){
+		wp_enqueue_style('pg-admin-biggopti', BDTPG_ADMIN_URL . 'assets/css/pg-admin-biggopti.css', [], BDTPG_VER);
 	}
 
 
@@ -80,12 +80,12 @@ class Admin {
 
         $direction_suffix = is_rtl() ? '.rtl' : '';
 
-        wp_enqueue_style('bdt-uikit', BDTPG_ADMIN_URL . 'assets/css/bdt-uikit' . $direction_suffix . '.css', [], '3.10.1');
-        wp_enqueue_style('pg-editor', BDTPG_ASSETS_URL . 'css/pg-editor' . $direction_suffix . '.css', [], BDTPG_VER);
-        wp_enqueue_style('pg-admin', BDTPG_ADMIN_URL . 'assets/css/pg-admin' . $direction_suffix . '.css', [], BDTPG_VER);
+        wp_enqueue_style('bdt-uikit', BDTPG_ADMIN_URL . 'assets/css/bdt-uikit'. $direction_suffix .'.css', [], '3.21.7');
+        wp_enqueue_style('pg-editor', BDTPG_ASSETS_URL . 'css/pg-editor.css', [], BDTPG_VER);
+        wp_enqueue_style('pg-admin', BDTPG_ADMIN_URL . 'assets/css/pg-admin.css', [], BDTPG_VER);
 
 
-        wp_enqueue_script('bdt-uikit', BDTPG_ADMIN_URL . 'assets/js/bdt-uikit.min.js', ['jquery'], '3.10.1');
+        wp_enqueue_script('bdt-uikit', BDTPG_ADMIN_URL . 'assets/js/bdt-uikit.min.js', ['jquery'], '3.21.7');
     }
 
     /**
@@ -98,7 +98,7 @@ class Admin {
         if (BDTPG_PBNAME === $plugin_file) {
             $row_meta = [
                 'docs'  => '<a href="https://bdthemes.com/contact/" aria-label="' . esc_attr(__('Go for Get Support', 'pixel-gallery')) . '" target="_blank">' . __('Get Support', 'pixel-gallery') . '</a>',
-                'video' => '<a href="https://www.youtube.com/playlist?list=PLP0S85GEw7DOJf_cbgUIL20qqwqb5x8KA" aria-label="' . esc_attr(__('View Pixel Gallery Video Tutorials', 'pixel-gallery')) . '" target="_blank">' . __('Video Tutorials', 'pixel-gallery') . '</a>',
+                'video' => '<a href="https://www.youtube.com/playlist?list=PLP0S85GEw7DPv5T-Ara11Zvplmk4ty0jy" aria-label="' . esc_attr(__('View Pixel Gallery Video Tutorials', 'pixel-gallery')) . '" target="_blank">' . __('Video Tutorials', 'pixel-gallery') . '</a>',
             ];
 
             $plugin_meta = array_merge($plugin_meta, $row_meta);
@@ -118,7 +118,7 @@ class Admin {
         if ( true !== _is_pg_pro_activated() ) {
             $row_meta = [
                 'settings' => '<a href="'.admin_url( 'admin.php?page=pixel_gallery_options' ) .'" aria-label="' . esc_attr(__('Go to settings', 'pixel-gallery')) . '" >' . __('Settings', 'pixel-gallery') . '</b></a>',
-                'gopro' => '<a href="https://pixelgallery.pro/pricing/?utm_source=PixelGallery&utm_medium=PluginPage&utm_campaign=30%OffOnPixelGallery&coupon=FREETOPRO" aria-label="' . esc_attr(__('Go get the pro version', 'pixel-gallery')) . '" target="_blank" title="When you purchase through this link you will get 30% discount!" class="pg-go-pro">' . __('Upgrade For 30% Off!', 'pixel-gallery') . '</a>',
+                'gopro' => '<a href="https://bdthemes.com/deals/?utm_source=WordPress_org&utm_medium=bfcm_cta&utm_campaign=pixel_gallery" aria-label="' . esc_attr(__('Go get the pro version', 'pixel-gallery')) . '" target="_blank" title="When you purchase through this link you will get 87% discount!" class="pg-go-pro">' . __('Black Friday Limited Offer Up To 87%', 'pixel-gallery') . '</a>',
             ];
         } else {
             $row_meta = [
@@ -145,7 +145,7 @@ class Admin {
         $links = array_merge($links, [
             sprintf(
                 '<a href="%s">%s</a>',
-                pixel_gallery_dashboard_link('#license'),
+                pixel_gallery_dashboard_link('#pixel_gallery_license_settings'),
                 esc_html__('License', 'pixel-gallery')
             )
         ]);
@@ -205,14 +205,14 @@ class Admin {
             
             wp_enqueue_script('jquery');
             wp_enqueue_script('jquery-form');
-            wp_enqueue_script('pg-notice', BDTPG_ADMIN_URL  . 'assets/js/pg-notice.min.js', ['jquery'], BDTPG_VER, true);
+            wp_enqueue_script('pg-biggopti', BDTPG_ADMIN_URL  . 'assets/js/pg-biggopti.min.js', ['jquery'], BDTPG_VER, true);
             
             $script_config = [
                 'ajaxurl'	=> admin_url('admin-ajax.php'),
                 'nonce'		=> wp_create_nonce('pixel-gallery'),
             ];
 
-            wp_localize_script('pg-notice', 'PixelGalleryNoticeConfig', $script_config);
+            wp_localize_script('pg-biggopti', 'PixelGalleryBiggoptiConfig', $script_config);
 
         }
     }

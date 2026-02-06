@@ -113,6 +113,7 @@ class Wisdom extends Module_Base {
 			[
 				'label'       => esc_html__('Day', 'pixel-gallery'),
 				'type'        => Controls_Manager::TEXT,
+				'dynamic'     => ['active' => true],
 				'default'     => esc_html__('03', 'pixel-gallery'),
 				'placeholder' => esc_html__('Day Text', 'pixel-gallery'),
 				'condition'   => ['item_hidden' => '']
@@ -124,6 +125,7 @@ class Wisdom extends Module_Base {
 			[
 				'label'       => esc_html__('Month', 'pixel-gallery'),
 				'type'        => Controls_Manager::TEXT,
+				'dynamic'     => ['active' => true],
 				'default'     => esc_html__('March', 'pixel-gallery'),
 				'placeholder' => esc_html__('Month Text', 'pixel-gallery'),
 				'condition'   => ['item_hidden' => '']
@@ -166,6 +168,7 @@ class Wisdom extends Module_Base {
 			[
 				'label'   => __('Title', 'pixel-gallery'),
 				'type'    => Controls_Manager::TEXT,
+				'dynamic' => ['active' => true],
 				'default' => 'Facebook',
 			]
 		);
@@ -175,6 +178,7 @@ class Wisdom extends Module_Base {
 			[
 				'label'   => __('Link', 'pixel-gallery'),
 				'type'    => Controls_Manager::TEXT,
+				'dynamic' => ['active' => true],
 				'default' => __('http://www.facebook.com/bdthemes/', 'pixel-gallery'),
 			]
 		);
@@ -477,7 +481,7 @@ class Wisdom extends Module_Base {
 		$this->add_responsive_control(
 			'date_spacing',
 			[
-				'label'      => esc_html__('Spacing', 'pixel-gallery') . BDTPG_NC,
+				'label'      => esc_html__('Spacing', 'pixel-gallery'),
 				'type'       => Controls_Manager::SLIDER,
 				'selectors'  => [
 					'{{WRAPPER}} .pg-wisdom-date-wrap' => 'margin-bottom: {{SIZE}}{{UNIT}};',
@@ -747,7 +751,7 @@ class Wisdom extends Module_Base {
 ?>
 		<div class="pg-wisdom-social-link">
 			<?php foreach ($settings['social_link_list'] as $link) : ?>
-				<a href="<?php echo esc_url($link['social_link']); ?>" target="_blank">
+				<a href="<?php echo esc_url($link['social_link']); ?>" target="_blank" aria-label="<?php echo esc_attr( 'Social link ' . $link['social_link_title'] ); ?>">
 					<?php Icons_Manager::render_icon($link['social_icon'], ['aria-hidden' => 'true', 'class' => 'fa-fw']); ?>
 				</a>
 			<?php endforeach; ?>
