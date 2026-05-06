@@ -5,11 +5,11 @@ Tags:  gallery, responsive gallery, image gallery, video gallery, gallery plugin
 Requires at least: 5.0.0
 Tested up to: 6.9.4
 Requires PHP: 7.4.0
-Stable tag: 2.1.7
+Stable tag: 2.1.8
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 Elementor requires at least: 3.28
-Elementor tested up to: 4.0.3
+Elementor tested up to: 4.0.6
 
 Pixel Gallery is an Elementor gallery plugin for creating responsive image and portfolio grids with customizable layouts and effects.
 
@@ -246,8 +246,14 @@ https://youtu.be/f70l2qE7W7o
 
 == Changelog ==
 
+= 2.1.8 [6th May 2026] =
+
+Added: New hover effect added in the epoch widget
+Fixed: Replaced hard-coded strings with proper translation support
+
 = 2.1.7 [28th April 2026] =
 
+Added: New Animated border hover effect added in the fabric widget with duration control
 Added: New title hover color control for crop, axen and ocean widgets
 Fixed: Post title and category links are now clickable in the crop, axen, and ocean widgets when using the dynamic query source
 Fixed: Glassmorphism effect issue fixed in the ocean widget
