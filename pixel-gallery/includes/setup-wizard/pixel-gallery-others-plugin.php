@@ -23,9 +23,8 @@ class PixelGallery_Others_Plugin_Manager {
      */
     public function __construct() {
         // Add AJAX handlers
-        add_action('wp_ajax_pg_get_plugins', [$this, 'ajax_get_plugins']);
-        add_action('wp_ajax_nopriv_pg_get_plugins', [$this, 'ajax_get_plugins']);
-        add_action('wp_ajax_pg_install_plugin', [$this, 'install_plugin_ajax']);
+        add_action('wp_ajax_bdtpg_get_plugins', [$this, 'ajax_get_plugins']);
+        add_action('wp_ajax_bdtpg_install_plugin', [$this, 'install_plugin_ajax']);
     }
 
     /**
@@ -53,8 +52,8 @@ class PixelGallery_Others_Plugin_Manager {
         );
 
         // Helper function for time formatting
-        if (!function_exists('format_last_updated_pg')) {
-            function format_last_updated_pg($date_string) {
+        if (!function_exists('pixel_gallery_format_last_updated')) {
+            function pixel_gallery_format_last_updated($date_string) {
                 if (empty($date_string)) {
                     return __('Unknown', 'pixel-gallery');
                 }
@@ -70,56 +69,28 @@ class PixelGallery_Others_Plugin_Manager {
                     return __('Just now', 'pixel-gallery');
                 } elseif ($diff < 3600) {
                     $minutes = floor($diff / 60);
+                    /* translators: %d: number of minutes (the count). */
                     return sprintf(_n('%d minute ago', '%d minutes ago', $minutes, 'pixel-gallery'), $minutes);
                 } elseif ($diff < 86400) {
                     $hours = floor($diff / 3600);
+                    /* translators: %d: number of hours (the count). */
                     return sprintf(_n('%d hour ago', '%d hours ago', $hours, 'pixel-gallery'), $hours);
                 } elseif ($diff < 2592000) { // 30 days
                     $days = floor($diff / 86400);
+                    /* translators: %d: number of days (the count). */
                     return sprintf(_n('%d day ago', '%d days ago', $days, 'pixel-gallery'), $days);
                 } elseif ($diff < 31536000) { // 1 year
                     $months = floor($diff / 2592000);
+                    /* translators: %d: number of months (the count). */
                     return sprintf(_n('%d month ago', '%d months ago', $months, 'pixel-gallery'), $months);
                 } else {
                     $years = floor($diff / 31536000);
+                    /* translators: %d: number of years (the count). */
                     return sprintf(_n('%d year ago', '%d years ago', $years, 'pixel-gallery'), $years);
                 }
             }
         }
 
-        // Helper function for fallback URLs
-        if (!function_exists('get_plugin_fallback_urls_pg')) {
-            function get_plugin_fallback_urls_pg($plugin_slug) {
-                // Handle different plugin slug formats
-                if (strpos($plugin_slug, '/') !== false) {
-                    // If it's a file path like 'plugin-name/plugin-name.php', extract directory
-                    $plugin_slug_clean = dirname($plugin_slug);
-                } else {
-                    // If it's just the plugin directory name, use it directly
-                    $plugin_slug_clean = $plugin_slug;
-                }
-                
-                // Custom icon URLs for specific plugins that might not be on WordPress.org
-                $custom_icons = [
-                    'ar-viewer' => [
-                        'https://ps.w.org/ar-viewer/assets/icon-256x256.gif',
-                        'https://ps.w.org/ar-viewer/assets/icon-128x128.gif',
-                    ],
-                ];
-                
-                // Return custom icons if available, otherwise use default WordPress.org URLs
-                if (isset($custom_icons[$plugin_slug_clean])) {
-                    return $custom_icons[$plugin_slug_clean];
-                }
-                
-                return [
-                    "https://ps.w.org/{$plugin_slug_clean}/assets/icon-256x256.png",  // Then PNG
-                    "https://ps.w.org/{$plugin_slug_clean}/assets/icon-128x128.png",  // Medium PNG
-                    "https://ps.w.org/{$plugin_slug_clean}/assets/icon-256x256.gif",  // Try GIF first
-                    "https://ps.w.org/{$plugin_slug_clean}/assets/icon-128x128.gif",  // Medium GIF
-                ];
-            }
-        }
         ?>
         
         <div class="pg-dashboard-panel"
@@ -223,8 +194,8 @@ class PixelGallery_Others_Plugin_Manager {
                     url: ajaxurl,
                     type: 'POST',
                     data: {
-                        action: 'pg_get_plugins',
-                        nonce: '<?php echo wp_create_nonce("pg_get_plugins_nonce"); ?>'
+                        action: 'bdtpg_get_plugins',
+                        nonce: '<?php echo esc_attr( wp_create_nonce("bdtpg_get_plugins_nonce") ); ?>'
                     },
                     success: function(response) {
                         if (response.success && response.data) {
@@ -256,23 +227,20 @@ class PixelGallery_Others_Plugin_Manager {
                         // Skip own plugin (Pixel Gallery) when printing only; data still includes it for other plugins
                         if (plugin.slug === 'pixel-gallery') return;
                         var isActive = false; // We'll determine this via PHP in the actual implementation
-                        var logoUrl = plugin.logo || '';
                         var pluginName = plugin.name || '';
                         var pluginSlug = plugin.slug || '';
-                        
-                        // Generate fallback logo URL if needed
-                        if (!logoUrl) {
-                            var actualSlug = pluginSlug.replace('.php', '').split('/')[0];
-                            logoUrl = 'https://ps.w.org/' + actualSlug + '/assets/icon-256x256.png';
-                        }
+                        // Icons are rendered locally from the plugin name; nothing is
+                        // loaded from a remote server.
+                        var pluginInitial = pluginName.replace(/<[^>]*>/g, '').trim().charAt(0).toUpperCase() || '#';
+                        pluginInitial = pluginInitial.replace(/[&<>"']/g, function (c) {
+                            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                        });
                         
                         html += '<div class="bdt-card bdt-card-body bdt-flex bdt-flex-middle bdt-flex-between">' +
                             '<div class="bdt-others-plugin-content">' +
                                 '<div class="bdt-plugin-logo-wrap bdt-flex bdt-flex-middle">' +
                                     '<div class="bdt-plugin-logo-container">' +
-                                        '<img src="' + logoUrl + '" alt="' + pluginName + '" class="bdt-plugin-logo" ' +
-                                            'onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">' +
-                                        '<div class="default-plugin-icon" style="display:none;">📦</div>' +
+                                        '<div class="default-plugin-icon" aria-hidden="true">' + pluginInitial + '</div>' +
                                     '</div>' +
                                     '<div class="bdt-others-plugin-user-wrap bdt-flex bdt-flex-middle">' +
                                         '<h1 class="pg-feature-title">' + pluginName + '</h1>' +
@@ -347,12 +315,12 @@ class PixelGallery_Others_Plugin_Manager {
                                 '<?php esc_html_e("Active", "pixel-gallery"); ?>' +
                                 '</span>';
                         } else if (plugin.status === 'installed') {
-                            var activateUrl = '<?php echo admin_url("plugins.php?action=activate&plugin="); ?>' + plugin.plugin_file + '&_wpnonce=' + plugin.activate_nonce;
+                            var activateUrl = '<?php echo esc_url( admin_url("plugins.php?action=activate&plugin=") ); ?>' + plugin.plugin_file + '&_wpnonce=' + plugin.activate_nonce;
                             html += '<a class="bdt-button bdt-welcome-button" href="' + activateUrl + '">' +
                                 '<?php esc_html_e("Activate", "pixel-gallery"); ?>' +
                                 '</a>';
                         } else {
-                            html += '<button class="bdt-button bdt-welcome-button pg-install-plugin" data-plugin-slug="' + pluginSlug + '" data-nonce="<?php echo wp_create_nonce('pg_install_plugin_nonce'); ?>">' +
+                            html += '<button class="bdt-button bdt-welcome-button pg-install-plugin" data-plugin-slug="' + pluginSlug + '" data-nonce="<?php echo esc_attr( wp_create_nonce('bdtpg_install_plugin_nonce') ); ?>">' +
                                 '<?php esc_html_e("Install", "pixel-gallery"); ?>' +
                                 '</button>';
                         }
@@ -385,10 +353,10 @@ class PixelGallery_Others_Plugin_Manager {
                     
                     // Perform AJAX request
                     $.ajax({
-                        url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                        url: '<?php echo esc_url( admin_url('admin-ajax.php') ); ?>',
                         type: 'POST',
                         data: {
-                            action: 'pg_install_plugin',
+                            action: 'bdtpg_install_plugin',
                             plugin_slug: pluginSlug,
                             nonce: nonce
                         },
@@ -489,8 +457,13 @@ class PixelGallery_Others_Plugin_Manager {
      */
     public function ajax_get_plugins() {
         // Verify nonce
-        if (!check_ajax_referer('pg_get_plugins_nonce', 'nonce', false)) {
-            wp_die(__('Security check failed.', 'pixel-gallery'));
+        if (!check_ajax_referer('bdtpg_get_plugins_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'pixel-gallery')], 403);
+        }
+
+        // Only users who could act on this list are allowed to request it.
+        if (!current_user_can('install_plugins')) {
+            wp_send_json_error(['message' => __('You do not have permission to view this list.', 'pixel-gallery')], 403);
         }
 
         // Get cached data
@@ -522,7 +495,7 @@ class PixelGallery_Others_Plugin_Manager {
      */
     public function install_plugin_ajax() {
         // Check nonce
-        if (!wp_verify_nonce($_POST['nonce'], 'pg_install_plugin_nonce')) {
+        if (!wp_verify_nonce(isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '', 'bdtpg_install_plugin_nonce')) {
             wp_send_json_error(['message' => __('Security check failed', 'pixel-gallery')]);
         }
 
@@ -531,7 +504,7 @@ class PixelGallery_Others_Plugin_Manager {
             wp_send_json_error(['message' => __('You do not have permission to install plugins', 'pixel-gallery')]);
         }
 
-        $plugin_slug = sanitize_text_field($_POST['plugin_slug']);
+        $plugin_slug = isset($_POST['plugin_slug']) ? sanitize_text_field(wp_unslash($_POST['plugin_slug'])) : '';
 
         if (empty($plugin_slug)) {
             wp_send_json_error(['message' => __('Plugin slug is required', 'pixel-gallery')]);

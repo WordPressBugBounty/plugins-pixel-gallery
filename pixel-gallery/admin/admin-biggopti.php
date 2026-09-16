@@ -2,6 +2,10 @@
 
 namespace PixelGallery;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
+
 /**
  * Biggopties class
  */
@@ -24,7 +28,7 @@ class Biggopties {
 		add_action('wp_ajax_pixel-gallery-biggopties', [$this, 'dismiss']);
 
 		// AJAX endpoint to fetch API biggopties on demand (after page load)
-		add_action('wp_ajax_pg_fetch_api_biggopties', [$this, 'ajax_fetch_api_biggopties']);
+		add_action('wp_ajax_bdtpg_fetch_api_biggopties', [$this, 'ajax_fetch_api_biggopties']);
 
 	}
 
@@ -34,33 +38,10 @@ class Biggopties {
 	 * @return array|mixed
 	 */
 	private function get_api_biggopties_data() {
-		// API endpoint for biggopties - you can change this to your actual endpoint
-		$api_url = 'https://api.sigmative.io/prod/store/api/biggopti/api-data-records';
-
-		$response = wp_remote_get($api_url, [
-			'timeout' => 30,
-			'headers' => [
-				'Accept' => 'application/json',
-			],
-		]);
-
-		if (is_wp_error($response)) {
-			return [];
-		}
-
-		$response_code = wp_remote_retrieve_response_code($response);
-
-		$response_body = wp_remote_retrieve_body($response);
-
-		$biggopties = json_decode($response_body);
-		
-		if( isset($biggopties) && isset($biggopties->{'pixel-gallery'}) ) {
-			$data = $biggopties->{'pixel-gallery'};
-			if (is_array($data)) {
-				return $data;
-			}
-		}
-
+		/*
+		 * The remote notice feed was retired in 2.2.1. Pixel Gallery contacts no
+		 * endpoint for admin notices, so there is nothing to fetch here.
+		 */
 		return [];
 	}
 
@@ -201,12 +182,7 @@ class Biggopties {
 	 */
 	private function render_api_biggopti($biggopti) {
 		ob_start();
-		
-		// Add custom CSS if provided
-		if (isset($biggopti->custom_css) && !empty($biggopti->custom_css)) {
-			echo '<style>' . wp_kses_post($biggopti->custom_css) . '</style>';
-		}
-		
+
 		// Prepare background styles
 		$background_style = '';
 		$wrapper_classes = 'bdt-biggopti-wrapper';
@@ -221,7 +197,7 @@ class Biggopties {
 		}
 		
 		?>
-		<div class="<?php echo esc_attr($wrapper_classes); ?>" <?php echo $background_style ? 'style="' . $background_style . '"' : ''; ?>>
+		<div class="<?php echo esc_attr($wrapper_classes); ?>" <?php echo $background_style ? 'style="' . esc_attr($background_style) . '"' : ''; ?>>
 			
 			
 			<?php $title = (isset($biggopti->title) && !empty($biggopti->title)) ? $biggopti->title : ''; ?>
@@ -295,7 +271,7 @@ class Biggopties {
 	 * AJAX: Build and return API biggopties HTML for dynamic injection
 	 */
 	public function ajax_fetch_api_biggopties() {
-		$nonce = isset($_POST['_wpnonce']) ? sanitize_text_field($_POST['_wpnonce']) : '';
+		$nonce = isset($_POST['_wpnonce']) ? sanitize_text_field(wp_unslash($_POST['_wpnonce'])) : '';
 		if (!wp_verify_nonce($nonce, 'pixel-gallery')) {
 			wp_send_json_error([ 'message' => 'invalid_nonce' ]);
 		}
@@ -305,7 +281,7 @@ class Biggopties {
 		}
 
 		// Don't show biggopties on plugin/theme install and upload pages
-		$current_url = isset($_POST['current_url']) ? sanitize_text_field($_POST['current_url']) : '';
+		$current_url = isset($_POST['current_url']) ? sanitize_text_field(wp_unslash($_POST['current_url'])) : '';
 
 		if (!empty($current_url)) {
 			$excluded_patterns = [
@@ -363,10 +339,10 @@ class Biggopties {
 	 * Dismiss Biggopti.
 	 */
 	public function dismiss() {
-		$nonce = (isset($_POST['_wpnonce'])) ? sanitize_text_field($_POST['_wpnonce']) : '';
-		$id   = (isset($_POST['id'])) ? esc_attr($_POST['id']) : '';
-		$time = (isset($_POST['time'])) ? esc_attr($_POST['time']) : '';
-		$meta = (isset($_POST['meta'])) ? esc_attr($_POST['meta']) : '';
+		$nonce = (isset($_POST['_wpnonce'])) ? sanitize_text_field(wp_unslash($_POST['_wpnonce'])) : '';
+		$id   = (isset($_POST['id'])) ? sanitize_text_field(wp_unslash($_POST['id'])) : '';
+		$time = (isset($_POST['time'])) ? absint(wp_unslash($_POST['time'])) : 0;
+		$meta = (isset($_POST['meta'])) ? sanitize_key(wp_unslash($_POST['meta'])) : '';
 
 		if ( ! wp_verify_nonce($nonce, 'pixel-gallery') ) {
 			wp_send_json_error();
@@ -377,28 +353,32 @@ class Biggopties {
 		}
 
 		/**
-		 * Valid inputs?
+		 * Whitelist: the storage key must live inside this plugin's own
+		 * `bdt-admin-biggopti-` namespace (see show_biggopties()), so a request
+		 * cannot write to an arbitrary transient or user meta key.
 		 */
-		if (!empty($id)) {
-			// Handle regular biggopties
-			if ('user' === $meta) {
-				update_user_meta(get_current_user_id(), $id, true);
-			} else {
-				set_transient($id, true, $time);
-
-				// Also store in options table for persistence
-				$dismissals_option = get_option('bdt_biggopti_dismissals', []);
-				$dismissals_option[$id] = [
-					'dismissed_at' => time(),
-					'expires_at' => time() + intval($time),
-				];
-				update_option('bdt_biggopti_dismissals', $dismissals_option, false);
-			}
-
-			wp_send_json_success();
+		if ( ! preg_match( '/^bdt-admin-biggopti-[A-Za-z0-9_-]{1,120}$/', $id ) ) {
+			wp_send_json_error();
 		}
 
-		wp_send_json_error();
+		// Cap the lifetime so a request cannot pin a transient indefinitely.
+		$time = min( max($time, MINUTE_IN_SECONDS), YEAR_IN_SECONDS );
+
+		if ('user' === $meta) {
+			update_user_meta(get_current_user_id(), $id, true);
+		} else {
+			set_transient($id, true, $time);
+
+			// Also store in options table for persistence
+			$dismissals_option = get_option('bdt_biggopti_dismissals', []);
+			$dismissals_option[$id] = [
+				'dismissed_at' => time(),
+				'expires_at' => time() + $time,
+			];
+			update_option('bdt_biggopti_dismissals', $dismissals_option, false);
+		}
+
+		wp_send_json_success();
 	}
 
 	/**
@@ -424,11 +404,6 @@ class Biggopties {
 		foreach (self::$biggopties as $key => $biggopti) {
 
 			$biggopti = wp_parse_args($biggopti, $defaults);
-
-			// Check if biggopti is for White Label
-			if (defined('BDTPG_WL') && $biggopti['category'] === 'regular') {
-				continue;
-			}
 
 			$classes = ['biggopti'];
 

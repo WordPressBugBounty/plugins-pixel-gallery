@@ -96,6 +96,7 @@ class Pixel_Gallery_Loader {
             self::$_instance = new self();
         }
 
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Long-standing public hook; renaming would break released Pixel Gallery Pro versions and third-party integrations.
         do_action('bdthemes_pixel_gallery/init');
         return self::$_instance;
     }
@@ -175,7 +176,7 @@ class Pixel_Gallery_Loader {
      * @return [type] [description]
      */
     public function register_site_scripts() {
-        wp_register_script('pg-animations', BDTPG_ASSETS_URL . 'js/extensions/pg-animations.min.js', ['jquery'], '', true);
+        wp_register_script('pg-animations', BDTPG_ASSETS_URL . 'js/extensions/pg-animations.min.js', ['jquery'], BDTPG_VER, true);
     }
 
     /**
@@ -205,7 +206,7 @@ class Pixel_Gallery_Loader {
         );
 
         $_is_pg_pro_activated = false;
-        if (function_exists('pg_license_validation') && true === pg_license_validation()) {
+        if (function_exists('pixel_gallery_license_validation') && true === pixel_gallery_license_validation()) {
             $_is_pg_pro_activated = true;
         }
 
@@ -276,8 +277,16 @@ class Pixel_Gallery_Loader {
 
 
     /**
-     * Callback to shortcodes template
-     * @param array $atts attributes for shortcode.
+     * Render an Elementor template by ID.
+     *
+     * The shortcode takes no free-form content: the only attribute is a post ID,
+     * which is cast to an integer and then validated below. A template is only
+     * rendered when it exists, is actually built with Elementor, and the current
+     * visitor is allowed to read it - so the shortcode can never be used to
+     * surface a private, draft or trashed post, nor a post of an unrelated type.
+     *
+     * @param array $atts Attributes for the shortcode.
+     * @return string Rendered Elementor markup, or an empty string.
      */
     public function shortcode_template($atts) {
 
@@ -286,15 +295,43 @@ class Pixel_Gallery_Loader {
                 'id' => '',
             ),
             $atts,
-            'rooten_custom_template'
+            'pixel_gallery_custom_template'
         );
 
-        $id = !empty($atts['id']) ? intval($atts['id']) : '';
+        $id = !empty($atts['id']) ? absint($atts['id']) : 0;
 
-        if (empty($id)) {
+        if (!$id || !did_action('elementor/loaded')) {
             return '';
         }
 
+        $post = get_post($id);
+
+        if (!$post) {
+            return '';
+        }
+
+        // Never render anything the visitor could not open on its own.
+        if ('publish' !== get_post_status($post) && !current_user_can('read_post', $id)) {
+            return '';
+        }
+
+        // Only Elementor-built content goes through Elementor's renderer.
+        $document = self::elementor()->documents->get($id);
+
+        if (!$document || !$document->is_built_with_elementor()) {
+            return '';
+        }
+
+        /*
+         * The return value is markup Elementor has already rendered and escaped
+         * through its own frontend pipeline - the very same call Elementor's core
+         * [elementor-template] shortcode makes. It intentionally contains style
+         * tags, SVG and data-* attributes, so running it through an escaping or
+         * wp_kses() pass here would strip Elementor's own output and break every
+         * template. The untrusted part of this shortcode is the ID, and that is
+         * cast with absint() and validated above.
+         */
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-rendered, pre-escaped Elementor document markup; see the note above.
         return self::elementor()->frontend->get_builder_content_for_display($id);
     }
 
@@ -318,8 +355,8 @@ class Pixel_Gallery_Loader {
 
         // Nonce is checked, get the POST data and sign user on
         $access_info                  = [];
-        $access_info['user_login']    = !empty($_POST['user_login']) ? sanitize_text_field($_POST['user_login']) : "";
-        $access_info['user_password'] = !empty($_POST['user_password']) ? sanitize_text_field($_POST['user_password']) : "";
+        $access_info['user_login']    = !empty($_POST['user_login']) ? sanitize_text_field(wp_unslash($_POST['user_login'])) : "";
+        $access_info['user_password'] = !empty($_POST['user_password']) ? sanitize_text_field(wp_unslash($_POST['user_password'])) : "";
         $access_info['remember']      = !empty($_POST['rememberme']) ? true : false;
         $user_signon                  = wp_signon($access_info, false);
 
@@ -391,6 +428,10 @@ class Pixel_Gallery_Loader {
         add_action('elementor/frontend/after_enqueue_scripts', [$this, 'enqueue_minified_js']);
 
 
+        add_shortcode('pixel_gallery_custom_template', [$this, 'shortcode_template']);
+
+        // Deprecated, unprefixed alias kept so content published with the older
+        // shortcode name keeps rendering. Both resolve to the same guarded callback.
         add_shortcode('rooten_custom_template', [$this, 'shortcode_template']);
 
 
@@ -406,7 +447,6 @@ class Pixel_Gallery_Loader {
 			new Admin();
             // Biggopti class
 	        require_once ( BDTPG_ADMIN_PATH . 'admin-biggopti.php' );
-            require_once ( BDTPG_ADMIN_PATH . 'admin-api-biggopti.php' );
             require_once ( BDTPG_ADMIN_PATH . 'admin-feeds.php' );			
 		}
     }

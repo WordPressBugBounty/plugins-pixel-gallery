@@ -48,20 +48,17 @@ class Setup_Wizard {
 
 	// Initialize hooks
 	private function init_hooks() {
-		add_action( 'wp_ajax_setup_wizard_install_plugins', array( $this, 'install_plugins' ) );
+		add_action( 'wp_ajax_bdtpg_setup_wizard_install_plugins', array( $this, 'install_plugins' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 		add_action( 'admin_init', array( $this, 'activate_default_widgets' ) );
 		add_action( 'admin_init', array( $this, 'maybe_display_setup_wizard' ) );
 		add_action( 'admin_init', array( $this, 'check_manual_wizard_request' ) );
-
-		if ( function_exists( 'add_filter' ) ) {
-			add_filter( 'auto_update_translation', '__return_false' );
-		}
 	}
 
 	// Check for manual wizard requests
 	public function check_manual_wizard_request() {
-		$is_setup_wizard_request = isset($_GET['pg_setup_wizard']) && $_GET['pg_setup_wizard'] === 'show';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only request flag to display the setup wizard, no state change.
+		$is_setup_wizard_request = isset($_GET['pg_setup_wizard']) && 'show' === sanitize_text_field(wp_unslash($_GET['pg_setup_wizard']));
 		
 		if ( $is_setup_wizard_request ) {
 			// Use the same approach as first activation - completely override the page
@@ -217,8 +214,8 @@ class Setup_Wizard {
 
         $direction_suffix = is_rtl() ? '.rtl' : '';
 
-        wp_enqueue_style('bdt-uikit', BDTPG_ADMIN_URL . 'assets/css/bdt-uikit'. $direction_suffix .'.css', [], '3.21.7');
-		wp_enqueue_script('bdt-uikit', BDTPG_ADMIN_URL . 'assets/js/bdt-uikit.min.js', ['jquery'], '3.21.7');
+        wp_enqueue_style('bdt-uikit', BDTPG_ADMIN_URL . 'assets/css/bdt-uikit'. $direction_suffix .'.css', [], BDTPG_VER);
+		wp_enqueue_script('bdt-uikit', BDTPG_ADMIN_URL . 'assets/js/bdt-uikit.min.js', ['jquery'], '3.25.22', true);
 
 		wp_register_script( 'pg-setup-wizard', plugins_url( 'assets/js/setup-wizard.js', __FILE__ ), array( 'jquery' ), '1.0.0', true );
 		wp_register_style( 'pg-setup-wizard', plugins_url( 'assets/css/setup-wizard.css', __FILE__ ), array(), '1.0.0' );
@@ -231,7 +228,7 @@ class Setup_Wizard {
 			'BDT_SetupWizard',
 			array(
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'setup_wizard_nonce' ),
+				'nonce'    => wp_create_nonce( 'bdtpg_setup_wizard_nonce' ),
 				'is_fullscreen' => true
 			)
 		);
@@ -247,94 +244,152 @@ class Setup_Wizard {
 		return $arr_obj;
 	}
 
-	// Install plugins
+	/**
+	 * Install (and, only with separate explicit consent, activate) the companion
+	 * plugins the user ticked in the setup wizard.
+	 *
+	 * Nothing here runs unattended: every plugin is opt-in (all toggles start
+	 * switched off), activation is a second, separate opt-in, and both steps are
+	 * gated on the matching capability. Only slugs on the plugin's own
+	 * allow-list can be installed or activated.
+	 */
 	public function install_plugins() {
-		check_ajax_referer( 'setup_wizard_nonce', 'nonce' );
-
-		$plugin_slugs = isset( $_POST['plugins'] ) ? $_POST['plugins'] : array();
-
-		if ( empty( $plugin_slugs ) || ! is_array( $plugin_slugs ) ) {
-			wp_send_json_error( array( 'message' => 'Invalid plugins array' ) );
-		}
+		check_ajax_referer( 'bdtpg_setup_wizard_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'install_plugins' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+			wp_send_json_error( array( 'message' => __( 'You do not have permission to install plugins.', 'pixel-gallery' ) ), 403 );
 		}
 
 		include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 		include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
-		include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader-skin.php';
 		include_once ABSPATH . 'wp-admin/includes/plugin.php';
 
+		$requested = isset( $_POST['plugins'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['plugins'] ) ) : array();
+		$allowed   = \PixelGallery\SetupWizard\Remote_Data_Handler::get_plugin_slugs();
+
+		// Normalise "dir/file.php" to the directory slug and keep only slugs this
+		// plugin actually offers, so an arbitrary plugin can never be targeted.
+		$plugin_slugs = array();
+		foreach ( $requested as $raw_slug ) {
+			$slug = ( false !== strpos( $raw_slug, '/' ) ) ? dirname( $raw_slug ) : $raw_slug;
+			$slug = sanitize_key( $slug );
+
+			if ( '' !== $slug && in_array( $slug, $allowed, true ) && ! in_array( $slug, $plugin_slugs, true ) ) {
+				$plugin_slugs[] = $slug;
+			}
+		}
+
+		if ( empty( $plugin_slugs ) ) {
+			wp_send_json_error( array( 'message' => __( 'No valid plugin was selected.', 'pixel-gallery' ) ) );
+		}
+
+		/*
+		 * Activation is a separate, explicit consent: the user has to tick the
+		 * "activate after installing" box in the wizard, and must be allowed to
+		 * activate plugins. Otherwise the plugin is only installed and the user
+		 * activates it themselves from the Plugins screen.
+		 */
+		$activation_consent = isset( $_POST['activate'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['activate'] ) );
+		$may_activate       = $activation_consent && current_user_can( 'activate_plugins' );
+
 		// Replace new \Plugin_Installer_Skin with new Quiet_Upgrader_Skin when output needs to be suppressed.
-		$skin = new Quiet_Upgrader_Skin();
-		// $skin     = new \Plugin_Installer_Skin( array( 'api' => $api ) );
+		$skin     = new Quiet_Upgrader_Skin();
 		$upgrader = new \Plugin_Upgrader( $skin );
 
-		// $upgrader = new \Plugin_Upgrader();
-
-        $installedPlugins = get_plugins();
 		$results = array();
 
 		foreach ( $plugin_slugs as $plugin_slug ) {
-            // skip when the plugin is already active
-            if (is_plugin_active($plugin_slug)) {
-                $results[] = array(
-                    'slug'    => $plugin_slug,
-                    'success' => true,
-                    'message' => 'Installed and activated successfully',
-                );
-                continue;
-            }
+			$plugin_file = $this->get_plugin_file( $plugin_slug );
 
-            // Download the plugin if the plugin is not installed
-            if (!isset($installedPlugins[$plugin_slug])) {
-                $slug = explode('/', $plugin_slug)[0];
-                $api = plugins_api( 'plugin_information', array( 'slug' => $slug ) );
+			// Already active: nothing to do.
+			if ( $plugin_file && is_plugin_active( $plugin_file ) ) {
+				$results[] = array(
+					'slug'      => $plugin_slug,
+					'success'   => true,
+					'activated' => true,
+					'message'   => __( 'Already installed and active.', 'pixel-gallery' ),
+				);
+				continue;
+			}
 
-                if ( is_wp_error( $api ) ) {
-                    $results[] = array(
-                        'slug'    => $plugin_slug,
-                        'success' => false,
-                        'message' => $api->get_error_message(),
-                    );
-                    continue;
-                }
+			// Not installed yet: download it from WordPress.org.
+			if ( ! $plugin_file ) {
+				$api = plugins_api( 'plugin_information', array( 'slug' => $plugin_slug, 'fields' => array( 'sections' => false ) ) );
 
-                $result = $upgrader->install( $api->download_link );
-                if ( is_wp_error( $result ) ) {
-                    $results[] = array(
-                        'slug'    => $plugin_slug,
-                        'success' => false,
-                        'message' => $result->get_error_message(),
-                    );
-                    continue;
-                }
-            }
+				if ( is_wp_error( $api ) ) {
+					$results[] = array(
+						'slug'    => $plugin_slug,
+						'success' => false,
+						'message' => $api->get_error_message(),
+					);
+					continue;
+				}
 
-            // active the plugin
-            if ( is_plugin_inactive($plugin_slug) ) {
-                $activation_result = activate_plugin( $plugin_slug );
-                if ( is_wp_error( $activation_result ) ) {
-                    $results[] = array(
-                        'slug'    => $slug,
-                        'success' => false,
-                        'message' => $activation_result->get_error_message(),
-                    );
-                    continue;
-                }
+				$result = $upgrader->install( $api->download_link );
 
-                $results[] = array(
-                    'slug'    => $plugin_slug,
-                    'success' => true,
-                    'message' => 'Installed and activated successfully',
-                );
-            }
+				if ( is_wp_error( $result ) ) {
+					$results[] = array(
+						'slug'    => $plugin_slug,
+						'success' => false,
+						'message' => $result->get_error_message(),
+					);
+					continue;
+				}
+
+				if ( true !== $result ) {
+					$results[] = array(
+						'slug'    => $plugin_slug,
+						'success' => false,
+						'message' => __( 'Installation failed. Please install this plugin from the Plugins screen.', 'pixel-gallery' ),
+					);
+					continue;
+				}
+
+				wp_clean_plugins_cache( false );
+				$plugin_file = $this->get_plugin_file( $plugin_slug );
+			}
+
+			if ( ! $plugin_file ) {
+				$results[] = array(
+					'slug'    => $plugin_slug,
+					'success' => false,
+					'message' => __( 'The plugin was downloaded but could not be located afterwards.', 'pixel-gallery' ),
+				);
+				continue;
+			}
+
+			// Installed. Activate only if the user explicitly asked us to.
+			if ( ! $may_activate ) {
+				$results[] = array(
+					'slug'      => $plugin_slug,
+					'success'   => true,
+					'activated' => false,
+					'message'   => __( 'Installed. You can activate it from the Plugins screen.', 'pixel-gallery' ),
+				);
+				continue;
+			}
+
+			$activation_result = activate_plugin( $plugin_file );
+
+			if ( is_wp_error( $activation_result ) ) {
+				$results[] = array(
+					'slug'      => $plugin_slug,
+					'success'   => true,
+					'activated' => false,
+					'message'   => $activation_result->get_error_message(),
+				);
+				continue;
+			}
+
+			$results[] = array(
+				'slug'      => $plugin_slug,
+				'success'   => true,
+				'activated' => true,
+				'message'   => __( 'Installed and activated.', 'pixel-gallery' ),
+			);
 		}
 
-		ob_clean();
 		wp_send_json_success( array( 'results' => $results ) );
-		wp_die();
 	}
 
 	/**
@@ -344,10 +399,14 @@ class Setup_Wizard {
 	 * @return string|false Plugin file path or false if not found.
 	 */
 	private function get_plugin_file( $slug ) {
-		$plugins = get_plugins();
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 
-		foreach ( $plugins as $file => $plugin ) {
-			if ( strpos( $file, $slug ) !== false ) {
+		foreach ( array_keys( get_plugins() ) as $file ) {
+			// Compare the directory exactly: a substring match would happily
+			// return "ultimate-post-kit-pro" for the slug "ultimate-post-kit".
+			if ( dirname( $file ) === $slug ) {
 				return $file;
 			}
 		}
@@ -423,231 +482,3 @@ class Setup_Wizard {
 
 // Initialize the Setup Wizard
 Setup_Wizard::get_instance();
-
-use Elementor\TemplateLibrary\Source_Local;
-
-add_action('wp_ajax_import_elementor_template', function () {
-		check_ajax_referer( 'setup_wizard_nonce', 'nonce' );
-
-		// Capability check - only administrators can import templates
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( [ 'message' => esc_html__( 'Unauthorized', 'pixel-gallery' ) ] );
-			wp_die();
-		}
-
-		$json_url = isset( $_POST['import_url'] ) ? esc_url_raw( wp_unslash( $_POST['import_url'] ) ) : '';
-
-        $response = wp_safe_remote_get($json_url, array(
-            'timeout'   => 60,
-            'sslverify' => false
-        ));
-
-        if (is_wp_error($response)) {
-            wp_send_json_error(['message' => esc_html__('Failed to fetch template from URL.', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        $sourceData = wp_remote_retrieve_body($response);
-        $sourceData2 = json_decode($sourceData, true);
-
-        if (!$sourceData2 || !is_array($sourceData2)) {
-            wp_send_json_error(['message' => esc_html__('Failed to fetch template from URL.', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        $temp_file = wp_upload_dir()['path'] . '/elementor_import_' . time() . '.json';
-        file_put_contents($temp_file, $sourceData);
-
-        // Initialize Elementor's Template Importer
-        if (!class_exists('\Elementor\TemplateLibrary\Source_Local')) {
-            unlink($temp_file);
-            wp_send_json_error(['message' => esc_html__('Elementor is not installed or activated!', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        $manager = new Source_Local();
-        $templateData = $manager->import_template('elementor_template', $temp_file);
-        unlink($temp_file); // Delete temp file after import
-
-        if (is_wp_error($templateData) || !is_array($templateData) || empty($templateData[0]['template_id'])) {
-            wp_send_json_error(['message' => esc_html__('Failed to import template!', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        $template_id = $templateData[0]['template_id'];
-        $metaData = get_post_meta($template_id);
-
-        $page_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : esc_html__("No Title", 'pixel-gallery');
-
-        // Validate Elementor Data
-        if (!isset($metaData['_elementor_data'][0])) {
-            wp_send_json_error(['message' => esc_html__('Elementor data not found in template.', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        $_elementor_data = wp_slash($metaData['_elementor_data'][0]);
-
-        // Create New Page
-        $new_post_id = wp_insert_post([
-            'post_type'    => 'page',
-            'post_status'  => empty($page_title) ? 'draft' : 'publish',
-            'post_title'   => $page_title,
-            'post_content' => '',
-        ]);
-
-        if (is_wp_error($new_post_id)) {
-            wp_send_json_error(['message' => esc_html__('Failed to create page!', 'pixel-gallery')]);
-            wp_die();
-        }
-
-        // Assign Elementor Template Data
-        update_post_meta($new_post_id, '_elementor_data', $_elementor_data);
-
-        // Import Page Settings if available
-        if (isset($metaData['_elementor_page_settings'][0])) {
-            $_elementor_page_settings = maybe_unserialize($metaData['_elementor_page_settings'][0]);
-            update_post_meta($new_post_id, '_elementor_page_settings', $_elementor_page_settings);
-        }
-
-        update_post_meta($new_post_id, '_elementor_template_type', $sourceData2['type'] ?? '');
-        update_post_meta($new_post_id, '_elementor_edit_mode', 'builder');
-//        update_post_meta($new_post_id, '_wp_page_template', !empty($pageTemplate) ? $pageTemplate : 'elementor_header_footer');
-
-        wp_send_json_success([
-            'message'   => esc_html__('The template was imported successfully.', 'pixel-gallery'),
-            'ids'       => $new_post_id,
-            'edit_link' => admin_url('post.php?post=' . $new_post_id . '&action=elementor'),
-        ]);
-	}
-);
-
-
-add_action('wp_ajax_import_pg_elementor_bundle_template', function () {
-    check_ajax_referer('setup_wizard_nonce', 'nonce');
-
-    // Capability check - only administrators can import templates
-    if ( ! current_user_can( 'manage_options' ) ) {
-        wp_send_json_error( [ 'message' => esc_html__( 'Unauthorized', 'pixel-gallery' ) ] );
-        wp_die();
-    }
-
-    $file_url = isset($_POST['import_url']) ? esc_url_raw(wp_unslash($_POST['import_url'])) : '';
-
-    if (!filter_var($file_url, FILTER_VALIDATE_URL) || 0 !== strpos($file_url, 'http')) {
-        wp_send_json_error(['message' => esc_html__('Invalid import URL', 'pixel-gallery')]);
-    }
-
-    $remote_zip_request = wp_safe_remote_get($file_url, array(
-        'timeout'   => 60,
-        'sslverify' => false,
-    ));
-
-    if (is_wp_error($remote_zip_request)) {
-        wp_send_json_error(['message' => esc_html__('Failed to fetch template from URL.', 'pixel-gallery')]);
-    }
-
-
-    if (200 !== $remote_zip_request['response']['code']) {
-        wp_send_json_error(['message' => esc_html__('Failed to fetch template from URL.', 'pixel-gallery')]);
-    }
-
-    $kit_zip_path = Plugin::$instance->uploads_manager->create_temp_file($remote_zip_request['body'], 'kit.zip');
-
-    $app = Plugin::$instance->app;
-    if (!$app) {
-        wp_send_json_error(['message' => esc_html__('Elementor app not available', 'pixel-gallery')]);
-    }
-
-    $import_export_module = $app->get_component('import-export');
-
-    try {
-        $result = $import_export_module->upload_kit($kit_zip_path, 'local');
-        $manifest = $result['manifest'] ?? [];
-        $plugins = $manifest['plugins'];
-
-        $missingPlugins = [];
-        foreach ($plugins as $plugin) {
-            $pluginSlug = $plugin['plugin'].".php";
-            if (is_plugin_inactive($pluginSlug)) {
-                $missingPlugins[] = $plugin;
-            }
-        }
-
-        if (count($missingPlugins)) {
-            wp_send_json_error([
-                'plugins' => $missingPlugins,
-                'message' => esc_html__('Missing plugins', 'pixel-gallery'),
-            ]);
-        }
-
-        $tmp_folder_id = $result['session'];
-        $includes = [];
-        $selectedCustomPostTypes = [];
-
-        if (isset($manifest['templates'])) {
-            $includes[] = 'templates';
-        }
-
-        if (isset($manifest['content'])) {
-            $includes[] = 'content';
-        }
-
-        if (isset($manifest['site-settings'])) {
-            $includes[] = 'settings';
-        }
-
-        if (isset($manifest['custom-post-type-title'])) {
-            $selectedCustomPostTypes = array_keys($manifest['custom-post-type-title']);
-        }
-
-        $settings = [
-            'id'                      => '',
-            'session'                 => $tmp_folder_id,
-            'include'                 => $includes,
-            'overrideConditions'      => [],
-            'selectedCustomPostTypes' => $selectedCustomPostTypes,
-        ];
-
-        $import = $import_export_module->import_kit($tmp_folder_id, $settings, true);
-
-        Plugin::$instance->uploads_manager->enable_unfiltered_files_upload();
-
-        wp_send_json_success($import);
-    } catch (\Throwable $e) {
-        wp_send_json_error(['message' => esc_html__('Import failed: ', 'pixel-gallery') . esc_html($e->getMessage())]);
-    }
-});
-
-add_action('wp_ajax_import_pg_elementor_bundle_runner_template', function () {
-    check_ajax_referer('setup_wizard_nonce', 'nonce');
-
-    // Capability check - only administrators can import templates
-    if ( ! current_user_can( 'manage_options' ) ) {
-        wp_send_json_error( [ 'message' => esc_html__( 'Unauthorized', 'pixel-gallery' ) ] );
-        wp_die();
-    }
-
-    $runner = isset($_POST['runner']) ? sanitize_text_field(wp_unslash($_POST['runner'])) : '';
-    $sessionId = isset($_POST['sessionId']) ? sanitize_text_field(wp_unslash($_POST['sessionId'])) : '';
-
-    if (!$runner || !$sessionId) {
-        wp_send_json_error(['message' => esc_html__('Required Param Is Missing.', 'pixel-gallery')]);
-    }
-
-    $app = Plugin::$instance->app;
-    if (!$app) {
-        wp_send_json_error(['message' => esc_html__('Elementor app not available.', 'pixel-gallery')]);
-    }
-
-    try {
-        @ini_set('max_execution_time', 60 * 5);
-
-        $import_export_module = $app->get_component('import-export');
-        $import = $import_export_module->import_kit_by_runner($sessionId, $runner);
-
-        do_action('elementor/import-export/import-kit/runner/after-run', $import);
-        wp_send_json_success($import);
-    } catch (\Throwable $throwable) {
-        wp_send_json_error(['message' => $throwable->getMessage()]);
-    }
-});

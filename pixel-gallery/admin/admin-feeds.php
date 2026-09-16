@@ -57,57 +57,7 @@ class Admin_Feeds {
 	 * Display RSS Feeds Content
 	 */
 	public function display_rss_feeds_content() {
-		$feeds = $this->get_remote_feeds_data();
-		if ( is_array( $feeds ) ) {
-			foreach ( $feeds as $feed ) {
-				?>
-				<div class="activity-block">
-					<a href="<?php echo esc_url( $feed->demo_link ); ?>" target="_blank" style="margin-bottom:10px; display: inline-block;">
-						<img src="<?php echo esc_url( $feed->image ); ?>" style="width:100%;min-height:240px;">
-					</a>
-					<p>
-						<?php echo wp_kses_post( wp_trim_words( wp_strip_all_tags( $feed->content ), 50 ) ); ?>
-						<a href="<?php echo esc_url( $feed->demo_link ); ?>" target="_blank">
-							<?php esc_html_e( 'Learn more...', $this->settings['text_domain'] ); ?>
-						</a>
-					</p>
-				</div>
-				<?php
-			}
-		}
 		echo wp_kses_post( $this->get_rss_posts_data() );
-	}
-
-	/**
-	 * Get Remote Feeds Data
-	 *
-	 * @return array|mixed
-	 */
-	private function get_remote_feeds_data() {
-		$transient_key = $this->settings['transient_key'];
-		$cached_data   = get_transient( $transient_key );
-
-		if ( ! empty( $cached_data ) ) {
-			return json_decode( $cached_data );
-		}
-
-		$response = wp_remote_get( $this->settings['remote_feed_link'],
-			array(
-				'timeout' => 30,
-				'headers' => array(
-					'Accept' => 'application/json',
-				),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return [];
-		}
-
-		$response_body = wp_remote_retrieve_body( $response );
-		set_transient( $transient_key, $response_body, 6 * HOUR_IN_SECONDS );
-
-		return json_decode( $response_body );
 	}
 
 	/**
@@ -130,7 +80,7 @@ class Admin_Feeds {
 			$rss = fetch_feed( $this->settings['feed_link'] );
 
 			if ( is_wp_error( $rss ) ) {
-				return '<li>' . esc_html__( 'Items Not Found', $this->settings['text_domain'] ) . '.</li>';
+				return '<li>' . esc_html__( 'Items Not Found', 'pixel-gallery' ) . '.</li>';
 			}
 
 			$maxitems  = $rss->get_item_quantity( 5 );
@@ -157,19 +107,19 @@ class Admin_Feeds {
 		<div class="bdt-widget">
 			<ul>
 				<?php if ( empty( $rss_items ) ) : ?>
-					<li><?php esc_html_e( 'Items Not Found', $this->settings['text_domain'] ); ?>.</li>
+					<li><?php esc_html_e( 'Items Not Found', 'pixel-gallery' ); ?>.</li>
 				<?php else : ?>
 					<?php foreach ( $rss_items as $item ) : ?>
 						<li>
 							<a target="_blank" href="<?php echo esc_url( $item['link'] ); ?>"
 								title="<?php echo esc_html( $item['date'] ); ?>">
 								<?php if ( $this->is_feed_item_new( $item['date'] ) ) : ?>
-									<span class="bdt-feed-badge bdt-feed-badge--new"><?php esc_html_e( 'New', $this->settings['text_domain'] ); ?></span>
+									<span class="bdt-feed-badge bdt-feed-badge--new"><?php esc_html_e( 'New', 'pixel-gallery' ); ?></span>
 								<?php endif; ?>
 								<?php echo esc_html( $item['title'] ); ?>
 							</a>
 							<span class="bdt-date" style="display: block; margin: 0;">
-								<?php echo esc_html( human_time_diff( $item['date'], current_time( 'timestamp' ) ) . ' ' . __( 'ago', $this->settings['text_domain'] ) ); ?>
+								<?php echo esc_html( human_time_diff( $item['date'], current_time( 'timestamp' ) ) . ' ' . __( 'ago', 'pixel-gallery' ) ); ?>
 							</span>
 							<div class="bdt-summary">
 								<?php echo esc_html( wp_html_excerpt( $item['content'], 120 ) . ' [...]' ); ?>
@@ -214,11 +164,10 @@ class Admin_Feeds {
 	}
 }
 
-$settings = array(
+new Admin_Feeds( array(
 	'feed_title'       => 'BdThemes News & Updates',
 	'transient_key'    => 'bdthemes_product_feeds',
 	'feed_link'        => 'https://bdthemes.com/feed',
-	'remote_feed_link' => 'https://dashboard.bdthemes.io/wp-json/bdthemes/v1/product-feed/?product_category=element-pack',
 	'text_domain'      => 'bdthemes',
 	'footer_links'     => [ 
 		[ 
@@ -238,7 +187,5 @@ $settings = array(
 			'title' => 'Changelog',
 		],
 	],
-);
-
-new Admin_Feeds( $settings );
+) );
 

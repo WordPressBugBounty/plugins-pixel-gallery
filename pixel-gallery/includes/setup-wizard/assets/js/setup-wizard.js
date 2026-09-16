@@ -166,30 +166,31 @@
                 }
             },
 
-            pluginSliderCheckbox: function(selector){
-                const pluginSlugs = [];
-                const data = $(selector).serialize();
-                data.split('&').forEach(item => {
-                    const [key, value] = item.split('=');
-                    if (key.startsWith('plugins') && value === 'on') {
-                        const slug = decodeURIComponent(key.split('%5B%5D')[1]);
-                        if (slug) {
-                            pluginSlugs.push(slug);
-                        }
-                    }
-                });
+            getSelectedPluginSlugs: function () {
+                return $('#pg-install-plugins .plugin-slider-checkbox:checked')
+                    .map(function () { return $(this).val(); })
+                    .get()
+                    .filter(Boolean);
+            },
+
+            pluginSliderCheckbox: function(){
+                const pluginSlugs = this.getSelectedPluginSlugs();
 
                 if(pluginSlugs.length){
                     $("#pg-install-plugins-btn").removeClass('d-none').addClass('pulse-animation');
+                    $("#pg-activate-consent-wrap").removeClass('d-none');
                 }else{
                     $("#pg-install-plugins-btn").addClass('d-none').removeClass('pulse-animation');
+                    $("#pg-activate-consent-wrap").addClass('d-none');
+                    // Activation consent never carries over to an empty selection.
+                    $("#pg-activate-after-install").prop('checked', false);
                 }
             },
 
             onChangedPluginSliderCheckbox: function(){
                 const vm = this;
                 $('#pg-install-plugins').on('change', '.plugin-slider-checkbox', function (e) {
-                    vm.pluginSliderCheckbox('#pg-install-plugins .plugin-slider-checkbox');
+                    vm.pluginSliderCheckbox();
                     
                     const pluginItem = $(this).closest('.plugin-item');
                     pluginItem.addClass('item-highlight');
@@ -213,7 +214,7 @@
                     currentStep.style.display = 'block'; // Make sure active step is visible
                 }
 
-                this.pluginSliderCheckbox('#pg-install-plugins .plugin-slider-checkbox');
+                this.pluginSliderCheckbox();
             },
 
             filterItemsByType: function(type) {
@@ -382,17 +383,11 @@
                     vm.installButton.disabled = true;
                     vm.installButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Installing...';
                     
-                    const pluginSlugs = [];
-                    const data = $(this).serialize();
-                    data.split('&').forEach(item => {
-                        const [key, value] = item.split('=');
-                        if (key.startsWith('plugins') && value === 'on') {
-                            const slug = decodeURIComponent(key.split('%5B%5D')[1]);
-                            if (slug) {
-                                pluginSlugs.push(slug);
-                            }
-                        }
-                    });
+                    const pluginSlugs = vm.getSelectedPluginSlugs();
+
+                    // Activation is a second, separate opt-in. When it is not
+                    // ticked the plugins are only downloaded, never switched on.
+                    const activateAfterInstall = $('#pg-activate-after-install').is(':checked') ? '1' : '0';
 
                     let installedPlugins = 0;
                     const totalPluginsSlug = pluginSlugs.length;
@@ -424,16 +419,17 @@
                         if (installedPlugins < totalPluginsSlug) {
                             const slug = pluginSlugs[installedPlugins];
                             const pluginName = slug.split('/')[0].split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                            
+
                             statusText.textContent = `Installing ${pluginName}...`;
                             
                             jQuery.ajax({
                                 url: BDT_SetupWizard.ajax_url,
                                 method: 'POST',
                                 data: {
-                                    action: 'setup_wizard_install_plugins',
+                                    action: 'bdtpg_setup_wizard_install_plugins',
                                     nonce: BDT_SetupWizard.nonce,
-                                    plugins: [slug]
+                                    plugins: [slug],
+                                    activate: activateAfterInstall
                                 },
                                 success: (response) => {
                                     if (response.success) {
@@ -469,7 +465,9 @@
                                 }
                             });
                         } else {
-                            statusText.textContent = 'All plugins installed successfully!';
+                            statusText.textContent = activateAfterInstall === '1'
+                                ? 'All selected plugins were installed and activated.'
+                                : 'All selected plugins were installed. Activate them from the Plugins screen whenever you are ready.';
                             statusText.innerHTML += ' <span class="success-indicator"><i class="dashicons dashicons-yes-alt"></i></span>';
                             
                             setTimeout(() => {
@@ -488,197 +486,6 @@
         wizard.init();
     });
 
-    // Handle template import button clicks
-    $('body').on('click', '.pg-setup-wizard .template-import', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const $button = $(this);
-        const $templateCard = $button.closest('.choose-template');
-        const importUrl = $templateCard.data('import-url');
-        const templateName = $templateCard.find('.template-title').text();
-        
-        if (!importUrl) {
-            alert('Import URL not found');
-            return;
-        }
-        
-        // Prevent multiple clicks
-        if ($button.prop('disabled')) {
-            return;
-        }
-        
-        // Update button state
-        const originalButtonHtml = $button.html();
-        $button.prop('disabled', true)
-               .html('<i class="dashicons dashicons-update"></i> Importing...');
-        
-        $templateCard.addClass('template-importing');
-        $templateCard.find('.template-title').html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Importing ${templateName}...`);
-        
-        // Determine import type based on template card classes
-        const isZipTemplate = $templateCard.hasClass('bdt-pg-import-temp-zip');
-        const isJsonTemplate = $templateCard.hasClass('bdt-pg-import-temp-json');
-        
-        if (isJsonTemplate) {
-            // Handle JSON template import
-            $.ajax({
-                url: BDT_SetupWizard.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'import_elementor_template',
-                    nonce: BDT_SetupWizard.nonce,
-                    import_url: importUrl
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $button.removeClass('template-importing')
-                               .addClass('template-imported')
-                               .html('<i class="dashicons dashicons-yes-alt"></i> Imported');
-                        $templateCard.removeClass('template-importing').addClass('template-imported');
-                        $templateCard.find('.template-title').html(`<i class="dashicons dashicons-yes-alt"></i> ${templateName} Imported`);
-                    } else {
-                        $button.removeClass('template-importing')
-                               .addClass('template-import-failed')
-                               .html('<i class="dashicons dashicons-no"></i> Failed');
-                        $templateCard.removeClass('template-importing').addClass('template-import-failed');
-                        $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> Import Failed`);
-                        
-                        // Reset button after 3 seconds
-                        setTimeout(() => {
-                            $button.prop('disabled', false)
-                                   .removeClass('template-import-failed')
-                                   .html(originalButtonHtml);
-                        }, 3000);
-                    }
-                },
-                error: function() {
-                    $button.removeClass('template-importing')
-                           .addClass('template-import-failed')
-                           .html('<i class="dashicons dashicons-no"></i> Failed');
-                    $templateCard.removeClass('template-importing').addClass('template-import-failed');
-                    $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> Import Failed`);
-                    
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        $button.prop('disabled', false)
-                               .removeClass('template-import-failed')
-                               .html(originalButtonHtml);
-                    }, 3000);
-                }
-            });
-        } else if (isZipTemplate) {
-            // Handle ZIP template import
-            $.ajax({
-                url: BDT_SetupWizard.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'import_pg_elementor_bundle_template',
-                    nonce: BDT_SetupWizard.nonce,
-                    import_url: importUrl
-                },
-                success: async function(response) {
-                    if (response.success) {
-                        const sessionId = response.data.session;
-                        const runners = response?.data?.runners;
-                        let error = '';
-
-                        for (const runner of runners) {
-                            const success = await importRunner(sessionId, runner);
-                            if (!success) {
-                                error = `❌ Failed to import: ${runner}`;
-                                break;
-                            }
-                        }
-
-                        if (error) {
-                            $button.removeClass('template-importing')
-                                   .addClass('template-import-failed')
-                                   .html('<i class="dashicons dashicons-no"></i> Failed');
-                            $templateCard.removeClass('template-importing').addClass('template-import-failed');
-                            $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> ${error}`);
-                            alert(error);
-                            
-                            // Reset button after 3 seconds
-                            setTimeout(() => {
-                                $button.prop('disabled', false)
-                                       .removeClass('template-import-failed')
-                                       .html(originalButtonHtml);
-                            }, 3000);
-                            return;
-                        }
-
-                        $button.removeClass('template-importing')
-                               .addClass('template-imported')
-                               .html('<i class="dashicons dashicons-yes-alt"></i> Imported');
-                        $templateCard.removeClass('template-importing').addClass('template-imported');
-                        $templateCard.find('.template-title').html(`<i class="dashicons dashicons-yes-alt"></i> ${templateName} Imported`);
-                    } else {
-                        $button.removeClass('template-importing')
-                               .addClass('template-import-failed')
-                               .html('<i class="dashicons dashicons-no"></i> Failed');
-                        $templateCard.removeClass('template-importing').addClass('template-import-failed');
-                        const missingPlugins = response?.data?.plugins;
-                        if (missingPlugins) {
-                            let pluginArr = [];
-                            for (const plugin of missingPlugins) {
-                                pluginArr.push(plugin.name);
-                            }
-                            $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> ${"plugins are required to import: " + pluginArr.join(', ')}`);
-                        } else {
-                            $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> ${response.data.message}`);
-                        }
-                        
-                        // Reset button after 3 seconds
-                        setTimeout(() => {
-                            $button.prop('disabled', false)
-                                   .removeClass('template-import-failed')
-                                   .html(originalButtonHtml);
-                        }, 3000);
-                    }
-                },
-                error: function() {
-                    $button.removeClass('template-importing')
-                           .addClass('template-import-failed')
-                           .html('<i class="dashicons dashicons-no"></i> Failed');
-                    $templateCard.removeClass('template-importing').addClass('template-import-failed');
-                    $templateCard.find('.template-title').html(`<i class="dashicons dashicons-no"></i> Import Failed`);
-                    
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        $button.prop('disabled', false)
-                               .removeClass('template-import-failed')
-                               .html(originalButtonHtml);
-                    }, 3000);
-                }
-            });
-        } else {
-            // Unsupported template type
-            alert('Unsupported template format');
-            $button.prop('disabled', false).html(originalButtonHtml);
-            $templateCard.removeClass('template-importing');
-        }
-    });
-
-    async function importRunner(sessionId, runner) {
-        try {
-            const response = await new Promise((resolve, reject) => {
-                $.ajax({
-                    url: BDT_SetupWizard.ajax_url, type: 'POST', data: {
-                        action: 'import_pg_elementor_bundle_runner_template',
-                        nonce: BDT_SetupWizard.nonce,
-                        sessionId: sessionId,
-                        runner: runner,
-                    }, success: resolve, error: reject
-                })
-            });
-
-            return response.success;
-        } catch (error) {
-            console.error('AJAX Error:', error);
-            return false;
-        }
-    }
 
 })(jQuery);
 
@@ -762,37 +569,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         .plugin-installed {
             border-color: var(--pg-success) !important;
-        }
-        
-        /* Template import states */
-        .template-importing {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        
-        .template-imported {
-            border-color: var(--pg-success) !important;
-        }
-        
-        .template-import-failed {
-            border-color: var(--pg-danger) !important;
-        }
-        
-        /* Template import button states */
-        .template-import:disabled {
-            cursor: not-allowed;
-        }
-        
-        .template-import.template-imported {
-            background-color: #28a745;
-            border-color: #28a745;
-            color: white;
-        }
-        
-        .template-import.template-import-failed {
-            background-color: #dc3545;
-            border-color: #dc3545;
-            color: white;
         }
         
         /* Animations */

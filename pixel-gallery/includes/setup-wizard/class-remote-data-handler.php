@@ -24,12 +24,12 @@ class Remote_Data_Handler {
     /**
      * Transient key for remote plugins data
      */
-    const CACHE_KEY = 'bdt_remote_plugins_data';
+    const CACHE_KEY = 'bdtpg_remote_plugins_data';
 
     /**
      * Cron hook name for background fetch
      */
-    const CRON_HOOK = 'bdt_fetch_remote_plugins_cron';
+    const CRON_HOOK = 'bdtpg_fetch_remote_plugins_cron';
 
     /**
      * Initialize the remote data handler
@@ -37,8 +37,7 @@ class Remote_Data_Handler {
     public static function init() {
         add_action('init', [__CLASS__, 'schedule_cron']);
         add_action(self::CRON_HOOK, [__CLASS__, 'cron_fetch_plugins']);
-        add_action('wp_ajax_pg_get_plugins', [__CLASS__, 'ajax_get_plugins']);
-        add_action('wp_ajax_nopriv_pg_get_plugins', [__CLASS__, 'ajax_get_plugins']);
+        add_action('wp_ajax_bdtpg_get_plugins', [__CLASS__, 'ajax_get_plugins']);
     }
 
     /**
@@ -59,14 +58,17 @@ class Remote_Data_Handler {
         }
 
         // Check if this is an AJAX request for our plugins
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page detection, no state change.
         if (wp_doing_ajax() && isset($_REQUEST['action'])) {
-            $action = sanitize_text_field($_REQUEST['action']);
-            if (in_array($action, ['pg_get_plugins'])) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page detection, no state change.
+            $action = sanitize_text_field(wp_unslash($_REQUEST['action']));
+            if (in_array($action, ['bdtpg_get_plugins'], true)) {
                 return true;
             }
         }
 
-        $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page detection, no state change.
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
         return $page === 'element_pack_options';
     }
 
@@ -104,16 +106,18 @@ class Remote_Data_Handler {
     }
 
     /**
-     * Fetch remote plugins data immediately (for background processing only)
-     * 
-     * @return array|false Plugins data or false on failure
+     * The WordPress.org slugs this plugin is allowed to look up and offer.
+     *
+     * This is the allow-list the setup wizard installer validates against, so a
+     * request can never install or activate an arbitrary plugin.
+     *
+     * @return string[] Plugin directory slugs.
      */
-    public static function fetch_remote_plugins_now() {
-        // Define plugin slugs to fetch
-        $plugin_slugs = [
+    public static function get_plugin_slugs() {
+        return [
             'bdthemes-element-pack-lite',
             'bdthemes-prime-slider-lite',
-            'ultimate-post-kit', 
+            'ultimate-post-kit',
             'ultimate-store-kit',
             'zoloblocks',
             'pixel-gallery',
@@ -125,6 +129,15 @@ class Remote_Data_Handler {
             'smart-admin-assistant',
             'website-accessibility',
         ];
+    }
+
+    /**
+     * Fetch remote plugins data immediately (for background processing only)
+     * 
+     * @return array|false Plugins data or false on failure
+     */
+    public static function fetch_remote_plugins_now() {
+        $plugin_slugs = self::get_plugin_slugs();
 
         $results = [];
         $errors = [];
@@ -150,8 +163,13 @@ class Remote_Data_Handler {
      */
     public static function ajax_get_plugins() {
         // Verify nonce for security
-        if (!check_ajax_referer('pg_get_plugins_nonce', 'nonce', false)) {
-            wp_die(__('Security check failed.', 'pixel-gallery'));
+        if (!check_ajax_referer('bdtpg_get_plugins_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'pixel-gallery')], 403);
+        }
+
+        // Only users who could act on this list are allowed to request it.
+        if (!current_user_can('install_plugins')) {
+            wp_send_json_error(['message' => __('You do not have permission to view this list.', 'pixel-gallery')], 403);
         }
 
         // Get cached data
@@ -204,7 +222,6 @@ class Remote_Data_Handler {
                 'name' => $data['name'] ?? '',
                 'slug' => $data['slug'] ?? '',
                 'description' => $data['description'] ?? '',
-                'logo' => $data['logo'] ?? '',
                 'rating' => $data['rating'] ?? 0,
                 'rating_percentage' => $data['rating_percentage'] ?? 0,
                 'num_ratings' => $data['num_ratings'] ?? 0,
@@ -313,18 +330,23 @@ class Remote_Data_Handler {
             return __('Just now', 'pixel-gallery');
         } elseif ($diff < 3600) {
             $minutes = floor($diff / 60);
+            /* translators: %d: number of minutes (the count). */
             return sprintf(_n('%d minute ago', '%d minutes ago', $minutes, 'pixel-gallery'), $minutes);
         } elseif ($diff < 86400) {
             $hours = floor($diff / 3600);
+            /* translators: %d: number of hours (the count). */
             return sprintf(_n('%d hour ago', '%d hours ago', $hours, 'pixel-gallery'), $hours);
         } elseif ($diff < 2592000) { // 30 days
             $days = floor($diff / 86400);
+            /* translators: %d: number of days (the count). */
             return sprintf(_n('%d day ago', '%d days ago', $days, 'pixel-gallery'), $days);
         } elseif ($diff < 31536000) { // 1 year
             $months = floor($diff / 2592000);
+            /* translators: %d: number of months (the count). */
             return sprintf(_n('%d month ago', '%d months ago', $months, 'pixel-gallery'), $months);
         } else {
             $years = floor($diff / 31536000);
+            /* translators: %d: number of years (the count). */
             return sprintf(_n('%d year ago', '%d years ago', $years, 'pixel-gallery'), $years);
         }
     }
@@ -341,7 +363,7 @@ class Remote_Data_Handler {
             'request' => [
                 'slug' => $plugin_slug,
                 'fields' => [
-                    'icons' => true,
+                    'icons' => false,
                     'short_description' => true,
                     'active_installs' => true,
                     'rating' => true,
@@ -401,9 +423,6 @@ class Remote_Data_Handler {
      * @return array Formatted plugin data
      */
     private static function format_plugin_data($raw_data) {
-        // Get the best available icon with validation
-        $icon_url = self::get_valid_plugin_icon($raw_data['icons'] ?? []);
-
         // Format active installs with null safety and real data
         $active_installs_raw = $raw_data['active_installs'] ?? 0;
         $active_installs = self::format_active_installs($active_installs_raw);
@@ -424,7 +443,6 @@ class Remote_Data_Handler {
         return [
             'name' => $raw_data['name'] ?? '',
             'slug' => $raw_data['slug'] ?? '',
-            'logo' => $icon_url,
             'description' => $raw_data['short_description'] ?? '',
             'active_installs' => $active_installs,
             'active_installs_count' => $active_installs_count,
@@ -443,53 +461,6 @@ class Remote_Data_Handler {
         ];
     }
 
-    /**
-     * Get valid plugin icon with format validation
-     *
-     * @param array $icons Array of icon URLs
-     * @return string Valid icon URL or empty string
-     */
-    private static function get_valid_plugin_icon($icons) {
-        $valid_extensions = ['gif', 'png', 'jpg', 'jpeg', 'svg'];
-        $icon_sizes = ['256', '128', 'default'];
-        
-        foreach ($icon_sizes as $size) {
-            if (!empty($icons[$size])) {
-                $icon_url = $icons[$size];
-                
-                // Check if URL is valid and has correct extension
-                if (self::is_valid_image_url($icon_url, $valid_extensions)) {
-                    return $icon_url;
-                }
-            }
-        }
-        
-        return '';
-    }
-
-    /**
-     * Validate image URL and extension
-     *
-     * @param string $url Image URL
-     * @param array $valid_extensions Allowed extensions
-     * @return bool True if valid
-     */
-    private static function is_valid_image_url($url, $valid_extensions) {
-        if (empty($url) || !is_string($url)) {
-            return false;
-        }
-        
-        // Check if URL is valid
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-        
-        // Get file extension
-        $path_info = pathinfo(parse_url($url, PHP_URL_PATH));
-        $extension = strtolower($path_info['extension'] ?? '');
-        
-        return in_array($extension, $valid_extensions);
-    }
 
     /**
      * Format active installs number with null safety

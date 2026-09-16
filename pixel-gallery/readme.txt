@@ -1,15 +1,15 @@
-=== Pixel Gallery Addons for Elementor - Easy Grid, Creative Gallery, Drag and Drop Grid, Custom Grid Layout, Portfolio Gallery ===
-Contributors: bdthemes, selimmw, mohammaadfarid, abutalib, muhammadasik, maudud, shmusuf, syedfarhanreza, arafatakashakku, shaikatazim, shamim496
+=== Pixel Gallery ===
+Contributors: bdthemes, selimmw, mohammaadfarid, abutalib, muhammadasik, maudud, shmusuf, arafatakashakku, shaikatazim, shamim496
 Donate link: https://bdthemes.com/
 Tags:  gallery, responsive gallery, image gallery, video gallery, gallery plugin
-Requires at least: 5.0.0
-Tested up to: 7.0.2
-Requires PHP: 7.4.0
-Stable tag: 2.1.14
+Requires at least: 6.0
+Tested up to: 7.1
+Requires PHP: 7.4
+Stable tag: 2.2.2
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 Elementor requires at least: 4.0.0
-Elementor tested up to: 4.2.1
+Elementor tested up to: 4.2.4
 
 Pixel Gallery is an Elementor gallery plugin for creating responsive image and portfolio grids with customizable layouts and effects.
 
@@ -215,6 +215,91 @@ Explore the best free addons for Elementor and Gutenberg to boost your site with
 Visit [BdThemes](https://bdthemes.com/) to learn about our services, Elementor page builder-based products, informative blogs and documentation.
 
 
+== External services ==
+
+This plugin connects to the following external services. No data is sent unless
+you visit the screen or trigger the action described below, and none of the
+requests include personal data about your site's visitors.
+
+= 1. BdThemes Blog feed =
+
+Used to display recent BdThemes blog posts and knowledge-base articles in the
+admin dashboard news widget.
+
+* Endpoint: `https://bdthemes.com/feed`
+* What is sent: nothing beyond a standard HTTP GET request. The response is cached.
+* When: only while an administrator is viewing the Pixel Gallery admin page.
+* Service provided by BdThemes — Terms of Service: https://bdthemes.com/terms-conditions/ — Privacy Policy: https://bdthemes.com/privacy-policy/
+
+= 2. WordPress.org Plugin API =
+
+Used by the setup wizard and the "Other Plugins" screen to look up public
+information about the free companion plugins they list (name, version, rating,
+active installs, last updated date and download link), and to download a plugin
+you explicitly choose to install.
+
+* Endpoint: `https://api.wordpress.org/plugins/info/1.2/` (and, when you choose
+  to install a plugin, the `https://downloads.wordpress.org/` package URL that
+  API returns)
+* What is sent: only the plugin slug being looked up. No site URL, no user data
+  and no visitor data are transmitted. This is the same public API the built-in
+  WordPress "Add Plugins" screen uses. The response is cached in a transient for
+  7 days.
+* When: only while a logged-in administrator with the `install_plugins`
+  capability is running the setup wizard or viewing the "Other Plugins" screen,
+  or when a scheduled refresh of that cache runs.
+* Service provided by the WordPress.org project — Terms of Service: https://wordpress.org/about/privacy/ — Privacy Policy: https://wordpress.org/about/privacy/
+
+= 3. Vimeo / YouTube video embeds (bundled UIkit library) =
+
+The bundled UIkit library used for the admin interface includes a lightbox
+component. If a lightbox is opened on a video, it resolves Vimeo video
+dimensions through Vimeo's public oEmbed endpoint and embeds the player in an
+iframe.
+
+* Endpoints: `https://vimeo.com/api/oembed.json` (a background request),
+  `https://player.vimeo.com/video/` and `https://www.youtube.com/embed/`
+  (iframe embeds only, no background request)
+* What is sent: the Vimeo video URL being opened. Requests are made with
+  `credentials: "omit"`, so no cookies are sent.
+* When: only in the browser, and only if a lightbox containing a video is
+  opened. Pixel Gallery does not use videos in its admin screens, so in normal
+  use these requests never fire.
+* Service provided by Vimeo — Terms of Service: https://vimeo.com/terms — Privacy Policy: https://vimeo.com/privacy
+* Service provided by YouTube (Google) — Terms of Service: https://www.youtube.com/t/terms — Privacy Policy: https://policies.google.com/privacy
+
+The admin UI and the Elementor panel also link out to `https://bdthemes.com/`,
+`https://pixelgallery.pro/`, `https://store.bdthemes.com/`,
+`https://account.bdthemes.com/`, `https://feedback.bdthemes.com/`,
+`https://feedback.elementpack.pro/` and `https://www.elementpack.pro/`. These are
+ordinary `<a href>` links that only open when you click them - nothing is embedded
+and the plugin sends no data to them in the background.
+
+== Source code ==
+
+Pixel Gallery is fully GPL and its complete, human-readable source is included
+in this plugin under the `/src` directory:
+
+* `src/js/` — unminified JavaScript sources for everything in `assets/js/`
+* `src/admin/js/` — unminified JavaScript sources for everything in `admin/assets/js/`
+* `src/less/` — LESS sources for `assets/css/`, `admin/assets/css/pg-admin.css` and `admin/assets/css/pg-admin-feeds.css`
+* `src/admin/css/` — readable sources for `admin/assets/css/bdt-uikit.css` and `admin/assets/css/bdt-uikit.rtl.css`
+
+Build tooling: [Grunt](https://gruntjs.com/) with `grunt-contrib-concat`,
+`grunt-contrib-less`, `grunt-rtlcss` and `grunt-terser`. The full configuration
+is in the bundled `gruntfile.js` and `package.json`.
+
+To regenerate the compiled assets:
+
+`npm install`
+`npm run build`
+
+Bundled third-party libraries:
+
+* UIkit 3.25.22 (admin UI framework) — https://github.com/uikit/uikit — source: `src/admin/js/bdt-uikit.js`, built to `admin/assets/js/bdt-uikit.min.js`. The JavaScript is UIkit's stock `dist/uikit.js` with the `uk-` prefix rebranded to `bdt-` (so it cannot collide with a theme or another plugin shipping stock UIkit) plus one patch that sanitises lightbox captions. The matching stylesheets, `admin/assets/css/bdt-uikit.css` and `bdt-uikit.rtl.css`, are UIkit's stock CSS trimmed to the components the admin UI uses and rebranded the same way; their readable sources are in `src/admin/css/`.
+* Chart.js 4.5.1 (admin dashboard charts) — https://github.com/chartjs/Chart.js — source: `src/admin/js/chart.js`, built to `admin/assets/js/chart.min.js`
+* matthiasmullie/minify 1.3.75 (optional asset optimizer) — https://github.com/matthiasmullie/minify — bundled unmodified under `admin/optimizer/vendor/`
+
 == Installation ==
 
 This section describes how to install the plugin and get it working.
@@ -245,6 +330,53 @@ https://youtu.be/f70l2qE7W7o
 
 
 == Changelog ==
+
+= 2.2.2 [14th September 2026] =
+
+* Fixed: Entrance Animation controls (Perspective, Delay, Transition Duration, Transform Origin, Translate, Rotate, Scale, Skew) are no longer greyed out - the feature ships in this plugin and is now fully usable
+* Fixed: Setup wizard no longer pre-selects companion plugins, and never activates one without a separate, explicit opt-in
+* Fixed: Companion plugin activation now requires the `activate_plugins` capability and is limited to the plugin's own allow-list
+* Fixed: Elementor template shortcode now validates the post type, status and read permission before rendering
+* Updated: UIkit updated to 3.25.22
+* Updated: Chart.js updated to 4.5.1
+* Updated: matthiasmullie/minify updated to 1.3.75
+* Updated: AJAX actions, nonces, transients, cron hooks and script handles are now consistently prefixed
+* Removed: "Tested up to" from the main plugin file; it is declared in readme.txt only
+* Removed: Logged-out AJAX endpoint for the companion plugin list
+* Removed: Unreachable remote-fetch code left behind by the retired admin notice feed
+* Added: Readable sources for the bundled admin UIkit stylesheets under `src/admin/css/`
+
+= 2.2.1 [18th August 2026] =
+
+* Removed: Deprecated BdThemes product-feed remote endpoint (returned an empty response) and its unused fetch code
+
+= 2.2.0 [17th August 2026] =
+
+* Removed: White Label branding options (now exclusive to Pixel Gallery Pro)
+* Removed: Custom CSS & JS code injection (use the WordPress Customizer's Additional CSS, or Pixel Gallery Pro)
+* Removed: Rollback Version screen (now exclusive to Pixel Gallery Pro)
+* Removed: Extra Options tab, which contained the above features
+* Added: External services and Source code documentation in readme
+* Added: Unminified JavaScript/LESS sources and build tooling to the plugin package
+* Updated: Settings are now validated against a whitelist of registered fields before saving
+* Updated: Notice dismissal is restricted to the plugin's own storage keys
+* Removed: Bundled template kit archives and the setup wizard's template import step
+* Fixed: Plugin no longer disables WordPress automatic translation updates
+* Fixed: Requires at least / Tested up to now use major WordPress versions
+
+= 2.1.17 [12th August 2026] =
+
+* Updated: System improved
+
+= 2.1.16 [10th August 2026] =
+
+* Updated: Admin API Biggopti removed
+
+= 2.1.15 [8th August 2026] =
+
+* Fixed: Security issue where data returned by the promotions API could be injected as script into the WordPress admin area
+* Fixed: Promotion links and images are now restricted to http(s) and mailto addresses
+* Updated: Security improved
 
 = 2.1.14 [30th July 2026] =
 
